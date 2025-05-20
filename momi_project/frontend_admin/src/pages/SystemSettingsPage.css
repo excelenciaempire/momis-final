@@ -1,0 +1,102 @@
+.system-settings-page {
+  padding: 20px;
+  font-family: sans-serif;
+}
+
+.system-settings-page h2, 
+.system-settings-page h3 {
+  color: var(--purple-main, #913D9A);
+  margin-bottom: 10px;
+}
+
+.system-settings-page h3 {
+  margin-top: 20px;
+  margin-bottom: 5px;
+}
+
+.prompt-form p {
+  font-size: 0.9em;
+  color: var(--gray-dark, #555);
+  margin-bottom: 15px;
+}
+
+.prompt-form textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--purple-light, #EBC7F2);
+  font-size: 1em;
+  line-height: 1.5;
+  margin-bottom: 15px;
+  box-sizing: border-box;
+  min-height: 150px;
+  resize: vertical;
+}
+
+.prompt-form textarea:focus {
+  outline: none;
+  border-color: var(--purple-main, #913D9A);
+  box-shadow: 0 0 0 2px var(--purple-light, #EBC7F2);
+}
+
+.form-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions .save-button {
+  background-color: var(--magenta-vibrant, #C542C1);
+  color: var(--white-soft, #FFF8FC);
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.form-actions .save-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.form-actions .save-button:disabled {
+  background-color: var(--gray-light, #AAAAAA);
+  cursor: not-allowed;
+}
+
+.form-actions .reset-button {
+  background-color: var(--gray-light, #AAAAAA);
+  color: var(--gray-dark, #333333);
+  padding: 10px 15px;
+  border: 1px solid var(--gray-dark, #555);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.form-actions .reset-button:hover:not(:disabled) {
+  background-color: #999999;
+}
+
+.form-actions .reset-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-error {
+  color: #D8000C; /* Error red */
+  background-color: #FFD2D2;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  font-size: 0.9em;
+}
+
+.settings-success {
+  color: #4F8A10; /* Success green */
+  background-color: #DFF2BF;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  font-size: 0.9em;
+} 

@@ -1,0 +1,68 @@
+.manage-documents-page h2,
+.manage-documents-page h3 {
+  color: var(--purple-main, #913D9A);
+  margin-bottom: 15px;
+}
+
+.upload-form {
+  background-color: var(--white-soft, #FFF8FC);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 30px;
+}
+
+.upload-button {
+  background-color: var(--magenta-vibrant, #C542C1);
+  color: var(--white-soft, #FFF8FC);
+}
+
+.upload-button:hover {
+  opacity: 0.9;
+}
+
+.documents-list {
+  margin-top: 20px;
+}
+
+.documents-list table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.documents-list th,
+.documents-list td {
+  border: 1px solid var(--purple-light, #EBC7F2);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.documents-list th {
+  background-color: var(--purple-light, #EBC7F2);
+  color: var(--purple-main, #913D9A);
+  font-weight: bold;
+}
+
+.documents-list td {
+  background-color: var(--white-soft, #FFF8FC);
+  color: var(--gray-dark, #333);
+}
+
+.documents-list tr:nth-child(even) td {
+  background-color: #f9f5fa; /* Slightly off-white for even rows */
+}
+
+.delete-button {
+  background-color: #e74c3c; /* Red */
+  color: white;
+  padding: 6px 12px;
+  font-size: 0.9em;
+}
+
+.delete-button:hover {
+  background-color: #c0392b;
+}
+
+/* Add styles for re-index button if needed */ 

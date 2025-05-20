@@ -1,0 +1,36 @@
+.chat-window-container {
+  flex-grow: 1; /* Takes up available space between header and footer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Contains MessageList which will scroll */
+  background-color: var(--white-soft);
+}
+
+.chat-error-message {
+  padding: 10px;
+  background-color: #ffdddd;
+  color: #d8000c;
+  text-align: center;
+  border-bottom: 1px solid #ffbaba;
+  font-size: 0.9em;
+}
+
+.chat-loading-error {
+    padding: 20px;
+    text-align: center;
+    color: var(--gray-dark);
+    font-style: italic;
+}
+
+.chat-disclaimer {
+  padding: 8px 12px;
+  background-color: var(--purple-light);
+  text-align: center;
+  font-size: 0.7em;
+  color: var(--gray-dark);
+  border-top: 1px solid var(--purple-main);
+}
+
+.chat-disclaimer p {
+  margin: 0;
+} 

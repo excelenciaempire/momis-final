@@ -1,0 +1,205 @@
+.user-management-page {
+  padding: 20px;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 100px); /* Adjust based on header/nav height */
+}
+
+.user-management-page h2 {
+  color: var(--purple-main, #913D9A);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--purple-light, #EBC7F2);
+}
+
+.tab-button {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  font-size: 1.1em;
+  color: var(--gray-dark, #555);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px; /* Align with parent border */
+}
+
+.tab-button.active {
+  color: var(--purple-main, #913D9A);
+  border-bottom-color: var(--magenta-vibrant, #C542C1);
+  font-weight: bold;
+}
+
+.error-message {
+  color: #D8000C;
+  background-color: #FFD2D2;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.content-area {
+  display: flex;
+  flex-grow: 1;
+  gap: 20px;
+  overflow-y: hidden; /* Prevent double scrollbars if panels manage their own */
+}
+
+.list-panel {
+  background-color: var(--white-soft, #FFF8FC);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.07);
+  overflow-y: auto;
+  flex-basis: 30%;
+  min-width: 250px;
+}
+
+.list-panel h3 {
+  color: var(--purple-main, #913D9A);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--purple-light, #EBC7F2);
+  padding-bottom: 5px;
+}
+
+.list-panel ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-panel li {
+  padding: 10px;
+  border-bottom: 1px solid var(--purple-light, #EBC7F2);
+  cursor: pointer;
+  font-size: 0.95em;
+}
+
+.list-panel li:last-child {
+  border-bottom: none;
+}
+
+.list-panel li:hover {
+  background-color: var(--purple-light, #EBC7F2);
+}
+
+.list-panel li.selected {
+  background-color: var(--magenta-vibrant, #C542C1);
+  color: var(--white-soft, #FFF8FC);
+  font-weight: bold;
+}
+
+.list-panel li.selected:hover {
+  background-color: var(--magenta-vibrant, #C542C1);
+  opacity: 0.9;
+}
+
+.summary-preview {
+    font-size: 0.8em;
+    color: #777;
+    margin-top: 4px;
+}
+.list-panel li.selected .summary-preview {
+    color: var(--white-soft, #FFF8FC);
+    opacity: 0.8;
+}
+
+.messages-panel {
+  background-color: #fdf6fd; /* Slightly different background for messages */
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.07);
+  overflow-y: auto;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-panel h3 {
+  color: var(--purple-main, #913D9A);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+  border-bottom: 1px solid var(--purple-light, #EBC7F2);
+  padding-bottom: 5px;
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto; /* Allow messages to scroll if they overflow */
+  padding-right: 10px; /* Space for scrollbar */
+}
+
+.message-bubble {
+  padding: 8px 12px;
+  border-radius: 15px;
+  margin-bottom: 10px;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.message-bubble p {
+  margin: 0 0 5px 0;
+  line-height: 1.4;
+}
+
+.message-bubble strong {
+    font-size: 0.9em;
+    color: var(--purple-main, #913D9A);
+}
+
+.message-user {
+  background-color: var(--purple-light, #EBC7F2);
+  color: var(--gray-dark, #333);
+  margin-left: auto;
+  border-bottom-right-radius: 5px;
+}
+
+.message-momi {
+  background-color: var(--magenta-vibrant, #C542C1);
+  color: var(--white-soft, #FFF8FC);
+  margin-right: auto;
+  border-bottom-left-radius: 5px;
+}
+
+.message-momi strong {
+    color: var(--white-soft, #FFF8FC);
+    opacity: 0.8;
+}
+
+.message-system {
+  background-color: #f0f0f0;
+  color: #555;
+  font-style: italic;
+  text-align: center;
+  max-width: 100%;
+  font-size: 0.85em;
+  border-radius: 5px;
+}
+
+.message-timestamp {
+  font-size: 0.75em;
+  color: inherit; /* Inherits color from parent bubble */
+  opacity: 0.7;
+  display: block;
+  text-align: right;
+  margin-top: 3px;
+}
+
+/* Specificity for user message timestamp */
+.message-user .message-timestamp {
+    color: var(--gray-dark, #555);
+}
+
+/* Specificity for momi message timestamp */
+.message-momi .message-timestamp {
+    color: var(--white-soft, #FFF8FC);
+} 

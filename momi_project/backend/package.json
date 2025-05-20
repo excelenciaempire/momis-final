@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm run build && node index.js",
+    "build": "npm run build:widget && npm run build:admin && npm run build:landing",
+    "build:widget": "cd ../frontend_widget && npm install && npm run build",
+    "build:admin": "cd ../frontend_admin && npm install && npm run build",
+    "build:landing": "echo \"Landing page is static, no build needed.\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.7",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.0",
+    "openai": "^4.100.0",
+    "pdf-parse": "^1.1.1"
+  }
+}

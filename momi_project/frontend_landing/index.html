@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOMi - Preview</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; text-align: center; }
+        .nav-links a { margin: 0 15px; font-size: 1.2em; text-decoration: none; color: var(--purple-main); padding: 10px 15px; border: 1px solid var(--purple-light); border-radius: 5px; transition: background-color 0.3s, color 0.3s; }
+        .nav-links a:hover { background-color: var(--purple-light); color: var(--purple-main); }
+        .logo { margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">MOMi</div>
+        <nav class="nav-links">
+            <a href="/">Chat Widget Preview</a>
+            <a href="/admin/">Admin Dashboard Preview</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>MOMi Preview</h1>
+                <p>Use the links above to preview the Chat Widget or the Admin Dashboard.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 MOMi Project.</p>
+    </footer>
+
+    <!-- MOMi Chat Widget Loader Script -->
+    <script>
+        (function() {
+            const WIDGET_CONTAINER_ID = 'momi-chat-widget-container';
+            let container = document.getElementById(WIDGET_CONTAINER_ID);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = WIDGET_CONTAINER_ID;
+                document.body.appendChild(container);
+            }
+            const script = document.createElement('script');
+            script.src = '/widget/assets/index.js'; 
+            script.async = true;
+            script.onload = () => { console.log('MOMi widget script loaded.'); };
+            script.onerror = () => { console.error('MOMi widget script failed to load.'); };
+            document.body.appendChild(script);
+        })();
+    </script>
+</body>
+</html> 

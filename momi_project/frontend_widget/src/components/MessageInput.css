@@ -1,0 +1,130 @@
+.message-input-form {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-top: 1px solid var(--purple-light);
+  background-color: var(--white-soft);
+}
+
+.input-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.text-input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid var(--gray-light);
+  border-radius: 20px;
+  font-size: 1em;
+  outline: none;
+}
+
+.text-input:focus {
+  border-color: var(--purple-main);
+}
+
+.text-input:disabled {
+  background-color: #f0f0f0;
+}
+
+.control-button {
+  background-color: transparent;
+  border: none;
+  color: var(--purple-main);
+  font-size: 1.5em; /* Larger icons */
+  padding: 5px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.control-button.disabled,
+.control-button:disabled {
+  color: var(--gray-light);
+  cursor: not-allowed;
+  background-color: transparent !important; /* Override hover if also disabled class is present */
+}
+
+.control-button:hover:not(:disabled):not(.disabled) {
+  background-color: var(--purple-light);
+}
+
+.send-button {
+  background-color: var(--magenta-vibrant);
+  color: var(--white-soft);
+  font-size: 1em; /* Text instead of icon */
+  padding: 0 15px; /* Adjust padding for text */ 
+}
+
+.send-button:disabled {
+  background-color: var(--gray-light) !important; /* Ensure disabled style overrides */
+  color: #f0f0f0;
+}
+
+.image-preview-container {
+  position: relative;
+  margin-bottom: 8px;
+  max-width: 150px;
+  border: 1px solid var(--purple-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.image-preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 100px;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.voice-error-message {
+  color: #d8000c; /* Red for errors */
+  font-size: 0.8em;
+  padding: 5px 0;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.voice-button.recording {
+  color: red;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px 10px rgba(255, 0, 0, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+  }
+} 

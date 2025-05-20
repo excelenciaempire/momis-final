@@ -4,3 +4,19 @@ channel = "stable-24_05"
 
 language = "nix"
 run = "cd momi_project/backend && npm start"
+
+[workflows]
+runButton = "Run"
+
+[[workflows.workflow]]
+name = "Run"
+author = 41873379
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd momi_project/backend && npm start"
+
+[[ports]]
+localPort = 3001
+externalPort = 80
