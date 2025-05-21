@@ -10,22 +10,37 @@ const SystemSettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [notification, setNotification] = useState({ type: '', message: '' }); // type: 'success', 'info', or 'error'
 
+  // Helper to get token, lenient for preview
+  const getToken = async () => {
+    const sessionData = await supabase.auth.getSession();
+    const session = sessionData?.data?.session;
+    if (session) {
+      return session.access_token;
+    }
+    console.warn("SystemSettingsPage: No active session, proceeding for preview. API calls may fail if auth is enforced by backend.");
+    return null; // Return null if no session
+  };
+
   const fetchBasePrompt = useCallback(async () => {
     setIsLoading(true);
     setNotification({ type: '', message: '' });
+    let token = null;
     try {
-      const sessionData = await supabase.auth.getSession();
-      const session = sessionData?.data?.session;
-      if (!session) throw new Error('Not authenticated. Please log in.');
+      token = await getToken();
+      // if (!token) throw new Error('Not authenticated. Please log in.'); // Allow proceeding for preview
 
       const response = await axios.get('/api/admin/system-settings/momi-base-prompt', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) }, // Conditionally add auth header
       });
       setBasePrompt(response.data.momi_base_prompt);
       setInitialPrompt(response.data.momi_base_prompt);
     } catch (err) {
       console.error('Error fetching base prompt:', err);
-      setNotification({ type: 'error', message: err.response?.data?.error || err.message || 'Failed to load base prompt.'});
+      let errMsg = err.response?.data?.error || err.message || 'Failed to load base prompt.';
+      if (!token && err.response?.status === 401) {
+        errMsg = "Failed to load prompt: Authentication error. Backend may require login.";
+      }
+      setNotification({ type: 'error', message: errMsg});
     }
     setIsLoading(false);
   }, []);
@@ -47,20 +62,24 @@ const SystemSettingsPage = () => {
     }
     setIsSaving(true);
     setNotification({ type: '', message: '' });
+    let token = null;
     try {
-      const sessionData = await supabase.auth.getSession();
-      const session = sessionData?.data?.session;
-      if (!session) throw new Error('Not authenticated. Please log in.');
+      token = await getToken();
+      // if (!token) throw new Error('Not authenticated. Please log in.'); // Allow proceeding for preview
 
       await axios.put('/api/admin/system-settings/momi-base-prompt', 
         { new_prompt_value: basePrompt }, 
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
+        { headers: { ...(token && { Authorization: `Bearer ${token}` }) } } // Conditionally add auth header
       );
       setInitialPrompt(basePrompt); 
       setNotification({ type: 'success', message: 'MOMi base prompt updated successfully!'});
     } catch (err) {
       console.error('Error updating base prompt:', err);
-      setNotification({ type: 'error', message: err.response?.data?.error || err.message || 'Failed to update base prompt.'});
+      let errMsg = err.response?.data?.error || err.message || 'Failed to update base prompt.';
+      if (!token && err.response?.status === 401) {
+        errMsg = "Failed to save prompt: Authentication error. Backend may require login.";
+      }
+      setNotification({ type: 'error', message: errMsg});
     }
     setIsSaving(false);
   };

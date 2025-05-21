@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npm run build && node index.js",
+    "start": "npm install && npm run build && node index.js",
     "build": "npm run build:widget && npm run build:admin && npm run build:landing",
     "build:widget": "cd ../frontend_widget && npm install && npm run build",
     "build:admin": "cd ../frontend_admin && npm install && npm run build",
@@ -16,6 +16,7 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.7",
+    "axios": "^1.7.2",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "multer": "^2.0.0",

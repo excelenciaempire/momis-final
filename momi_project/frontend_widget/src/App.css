@@ -1,187 +1,129 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+:root {
+  /* ... existing color variables ... */
+  --momi-purple-vibrant: #8E24AA;
+  --momi-white: #FFFFFF;
+  --momi-gray-background: #F5F5F5;
+  --momi-gray-light-accent: #F0F0F0;
+  --momi-text-dark: #333333;
+  --momi-text-light: #FFFFFF;
+  --momi-border-gray: #DDDDDD;
+  --momi-font-sans-serif: 'Poppins', system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  --chat-widget-width: 350px; /* Slightly narrower */
+  --chat-widget-max-height: 500px; /* Adjusted max height */
+  --chat-widget-header-height: 50px;
+  --chat-widget-input-height: 60px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+/* Base styling for the widget can go here or in index.css */
+.chat-widget-container.open .chat-window-wrapper {
+  /* Desktop styles */
+  width: 400px;
+  height: 650px;
+  max-width: 95vw;
+  max-height: 90vh;
+  border-radius: 8px; /* Updated border-radius */
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-.app-container {
-  width: 100%;
-  max-width: var(--chat-widget-width, 400px);
-  height: var(--chat-widget-height, 80vh);
-  max-height: var(--chat-widget-max-height, 700px);
+  background-color: var(--momi-white);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* Enhanced shadow */
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--purple-light);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  background-color: var(--white-soft);
-  overflow: hidden; /* Important for keeping content within rounded corners */
-  margin: 20px auto; /* Center for standalone view */
+  overflow: hidden;
+  border: 1px solid var(--momi-border-gray);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.app-header {
-  background-color: var(--purple-main);
-  color: var(--white-soft);
-  padding: 10px 15px;
-  text-align: center;
-  border-bottom: 1px solid var(--purple-light);
+/* Mobile styles */
+@media (max-width: 767px) {
+  .chat-widget-container.open .chat-window-wrapper {
+    width: 90vw;
+    height: 80vh;
+    /* max-width and max-height from desktop can still apply or be overridden if needed */
+    /* border-radius is already 8px from above */
+  }
 }
 
-.app-header h1 {
-  margin: 0;
-  font-size: 1.2em;
-}
-
-.auth-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.auth-buttons button {
-  background-color: var(--magenta-vibrant);
-  color: var(--white-soft);
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em;
-}
-
-.auth-buttons button:hover {
-  opacity: 0.9;
-}
-
-.app-header p {
-  font-size: 0.8em;
-  margin: 5px 0 0;
-}
-
-.app-footer {
-  background-color: var(--purple-light);
-  color: var(--gray-dark);
-  padding: 8px 15px;
-  text-align: center;
-  font-size: 0.75em;
-  border-top: 1px solid var(--purple-main);
-}
-
-.app-footer p {
-  margin: 0;
-}
-
-/* General Styles for inputs and buttons if needed globally */
-button {
-  cursor: pointer;
-}
-
-input[type="text"], input[type="email"], input[type="password"] {
-  padding: 8px;
-  border: 1px solid var(--gray-light);
-  border-radius: 4px;
-  font-family: var(--font-primary);
-}
-
-.chat-widget-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
+.chat-widget-container.closed .chat-window-wrapper {
+  opacity: 0;
+  transform: translateY(20px);
+  height: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 .chat-toggle-button {
-  background-color: var(--purple-main, #913D9A);
-  color: var(--white-soft, #FFF8FC);
-  padding: 12px 20px;
+  background-color: var(--momi-purple-vibrant);
+  color: var(--momi-white);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%; /* Circular button */
   border: none;
-  border-radius: 25px;
-  font-size: 1em;
+  font-size: 1.5em; /* For an icon, adjust as needed */
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: background-color 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  /* Placeholder for an icon - we can use text or an SVG later */
 }
 
 .chat-toggle-button:hover {
-  background-color: var(--magenta-vibrant, #C542C1);
+  background-color: #7B1FA2; /* Slightly darker purple on hover */
+  transform: scale(1.05);
 }
 
-.chat-window-wrapper {
-  width: 370px;
-  height: 550px; /* Max height */
-  background-color: var(--white-soft, #FFF8FC);
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Important for disclaimer positioning */
-  border: 1px solid var(--purple-light, #EBC7F2);
+.chat-widget-container.open .chat-toggle-button {
+  /* Optionally style the button differently when chat is open, e.g., change icon */
+   background-color: #A13ABF; /* Lighter purple when open to indicate active state */
 }
 
-/* Styles for the ChatWindow component itself are in ChatWindow.css */
-/* App.css only handles the wrapper and toggle */
 
+/* Styles from original App.css that are not directly widget UI related */
+/* Consider moving these or ensuring they don't conflict if #root is also used by landing page */
+/* For now, assume #root in widget context is specific to the widget container */
+#root {
+  /* max-width: 1280px; */ /* Remove if widget has its own fixed width */
+  /* margin: 0 auto; */
+  /* padding: 2rem; */
+  /* text-align: center; */
+}
+
+/* Remove or adapt Vite default styles below if they are not desired for the widget */
+.logo {
+  /* ... keep if used by an error/loading page within widget, otherwise remove ... */
+}
+
+@keyframes logo-spin { /* ... remove if logo and its spin are not used ... */ }
+
+.card {
+  /* padding: 2em; */ /* Likely not needed for widget internal styling */
+}
+
+.read-the-docs {
+  /* color: #888; */ /* Likely not needed */
+}
+
+/* Specific old layout styles - these should generally be removed or live in ChatWindow.css if part of its direct structure */
+.app-container, .app-header, .auth-buttons, .app-footer {
+    /* These were for a full-page app concept. Remove if not adapted for widget components. */
+    display: none; /* Hiding them by default to avoid conflict */
+}
+
+/* Disclaimer styling - will be part of ChatWindow component's structure */
 .chat-disclaimer {
-  background-color: var(--purple-light, #EBC7F2);
+  background-color: var(--momi-gray-light-accent);
   padding: 8px 12px;
   text-align: center;
-  border-top: 1px solid var(--purple-main, #913D9A);
-  flex-shrink: 0; /* Prevent shrinking */
+  border-top: 1px solid var(--momi-border-gray);
+  flex-shrink: 0;
 }
 
 .chat-disclaimer p {
   margin: 0;
   font-size: 0.75em;
-  color: var(--gray-dark, #333333);
+  color: var(--momi-text-dark);
   line-height: 1.3;
-}
-
-/* Ensure app-container and header/footer specific to old layout are removed or adapted if needed */
-.app-container {
-  /* If this was used for centering, it might not be needed for a widget */
-}
-
-.app-header {
-  /* Styles for old header */
-}
-
-.app-footer {
-  /* Styles for old footer */
 }

@@ -13,42 +13,66 @@ const linkify = (text) => {
   });
 };
 
+// Simple M avatar for MOMi messages
+const MomiAvatar = () => (
+  <div className="momi-avatar">
+    <span>M</span>
+  </div>
+);
+
 const MessageList = ({ messages, isLoading }) => {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }
+  };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  if (isLoading) {
-    return <div className="message-list-loading">Loading messages...</div>;
-  }
+  // Define the initial greeting message from MOMi
+  const initialGreetingMessage = {
+    id: 'initial-greeting',
+    sender_type: 'momi',
+    content_type: 'text',
+    content: "Hi there! I'm MOMi, your wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?",
+    timestamp: new Date().toISOString() // Or a fixed earlier timestamp
+  };
 
-  if (!messages || messages.length === 0) {
-    return <div className="message-list-empty">No messages yet. Start the conversation!</div>;
+  // Combine initial greeting with other messages if no messages exist yet
+  const displayMessages = messages.length === 0 && !isLoading ? [initialGreetingMessage] : messages;
+
+  if (isLoading && displayMessages.length === 0) {
+    return <div className="message-list-loading">Loading messages...</div>;
   }
 
   return (
     <div className="message-list">
-      {messages.map((msg, index) => (
-        <div key={msg.id || index} className={`message-item message-item-${msg.sender_type?.toLowerCase()}`}>
-          <div className="message-bubble">
-            {msg.content_type === 'image_url' || (msg.metadata?.imageUrl && msg.content_type === 'text') ? (
-              <div className="message-image-container">
-                <img src={msg.metadata?.imageUrl || msg.content} alt={msg.content === 'Uploading image...' ? msg.content : 'User upload'} className="message-image" />
-                {msg.content !== 'Uploading image...' && msg.content_type === 'text' && <p>{msg.content}</p>}
-              </div>
+      {displayMessages.map((msg, index) => (
+        <div
+          key={msg.id || index} // Use msg.id if available, fallback to index
+          className={`message-item ${msg.sender_type} ${msg.content_type} ${msg.id === 'initial-greeting' ? 'initial-greeting' : ''}`}
+        >
+          {msg.sender_type === 'momi' && (
+            <MomiAvatar />
+          )}
+          <div className="message-content">
+            {msg.content_type === 'image_url' ? (
+              msg.error ? (
+                <span className="upload-error-text">{msg.content}</span>
+              ) : msg.metadata?.localPreview ? (
+                <img src={msg.metadata.localPreview} alt="Uploaded preview" className="message-image" />
+              ) : (
+                <img src={msg.content} alt="Uploaded image" className="message-image" />
+              )
             ) : (
-              <p>{linkify(msg.content)}</p>
+              <p>{msg.content}</p>
             )}
           </div>
-          <span className="message-timestamp">
-            {new Date(msg.timestamp).toLocaleTimeString()} - {msg.sender_type?.toUpperCase()}
-          </span>
+          {/* <span className="message-timestamp">
+            {msg.id !== 'initial-greeting' && `${new Date(msg.timestamp).toLocaleTimeString()} - ${msg.sender_type?.toUpperCase()}`}
+          </span> */}
         </div>
       ))}
       <div ref={messagesEndRef} />

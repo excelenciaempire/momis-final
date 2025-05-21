@@ -11,10 +11,23 @@ const ManageDocumentsPage = () => {
   const [isLoadingAction, setIsLoadingAction] = useState(false); // For delete/re-index actions
   const [notification, setNotification] = useState({ type: '', message: '' }); // type: 'success' or 'error'
 
+  // Helper to get token, lenient for preview
+  const getToken = async () => {
+    const sessionData = await supabase.auth.getSession();
+    const session = sessionData?.data?.session;
+    if (session) {
+      return session.access_token;
+    }
+    console.warn("ManageDocumentsPage: No active session, proceeding for preview. API calls may fail if auth is enforced by backend.");
+    return null; // Return null if no session
+  };
+
   const fetchDocuments = useCallback(async () => {
     setIsLoadingDocs(true);
     setNotification({ type: '', message: '' });
     try {
+      // Fetching documents doesn't require admin token for read if RLS allows general read access 
+      // or if using service key on backend. For now, assume public read or RLS handles it.
       const { data, error: fetchError } = await supabase
         .from('knowledge_base_documents')
         .select('id, file_name, file_type, uploaded_at, last_indexed_at')
@@ -48,32 +61,32 @@ const ManageDocumentsPage = () => {
 
     const formData = new FormData();
     formData.append('document', file);
-
+    let token = null;
     try {
-      const sessionData = await supabase.auth.getSession();
-      const session = sessionData?.data?.session;
-      if (!session) {
-        setNotification({ type: 'error', message: 'Authentication error. Please log in again.' });
-        setUploading(false);
-        return;
-      }
+      token = await getToken();
+      // if (!token) { // Removed strict check for preview
+      //   setNotification({ type: 'error', message: 'Authentication error. Please log in again.' });
+      //   setUploading(false);
+      //   return;
+      // }
 
       const response = await axios.post('/api/admin/rag/upload-document', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${session.access_token}`
+          ...(token && { 'Authorization': `Bearer ${token}` }) // Conditionally add auth header
         }
       });
       setNotification({ type: 'success', message: response.data.message || 'Document uploaded successfully!' });
       setFile(null);
-      if (e.target.reset) e.target.reset(); // Reset the form using the event target
+      if (e.target.reset) e.target.reset();
       fetchDocuments(); 
     } catch (err) {
       console.error("Upload error:", err.response?.data || err.message);
-      setNotification({ 
-        type: 'error', 
-        message: `Upload failed: ${err.response?.data?.details || err.response?.data?.error || err.message}` 
-      });
+      let errMsg = `Upload failed: ${err.response?.data?.details || err.response?.data?.error || err.message}`;
+      if (!token && err.response?.status === 401) {
+        errMsg = "Upload failed: Authentication error. Backend may require login.";
+      }
+      setNotification({ type: 'error', message: errMsg });
     }
     setUploading(false);
   };
@@ -85,16 +98,15 @@ const ManageDocumentsPage = () => {
 
     setIsLoadingAction(true);
     setNotification({ type: '', message: '' });
-
+    let token = null;
     try {
-      const sessionData = await supabase.auth.getSession();
-      const token = sessionData?.data?.session?.access_token;
-      if (!token) {
-        throw new Error('No active session. Please log in again.');
-      }
+      token = await getToken();
+      // if (!token) { // Removed strict check for preview
+      //   throw new Error('No active session. Please log in again.');
+      // }
       
       const response = await axios.delete(`/api/admin/rag/document/${documentId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { ...(token && { 'Authorization': `Bearer ${token}` }) } // Conditionally add auth header
       });
 
       if (response.status === 200 && response.data.message) {
@@ -105,10 +117,11 @@ const ManageDocumentsPage = () => {
       }
     } catch (err) {
       console.error('Error deleting document:', err);
-      setNotification({ 
-        type: 'error', 
-        message: `Delete failed: ${err.response?.data?.error || err.message}`
-      });
+      let errMsg = `Delete failed: ${err.response?.data?.error || err.message}`;
+      if (!token && err.response?.status === 401) {
+        errMsg = "Delete failed: Authentication error. Backend may require login.";
+      }
+      setNotification({ type: 'error', message: errMsg });
     }
     setIsLoadingAction(false);
   };

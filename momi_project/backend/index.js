@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs'); // Needed for OpenAI SDK to read file from path for Whisper
 const pdf = require('pdf-parse'); // For PDF text extraction
 const authAdmin = require('./middleware/authAdmin'); // Import admin auth middleware
+const axios = require('axios'); // Added for image URL to Data URI conversion
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -21,7 +22,7 @@ app.use(express.static(path.join(__dirname, '../frontend_landing')));
 // All /admin/* routes should serve the admin panel's index.html for client-side routing
 const adminDistPath = path.join(__dirname, '../frontend_admin/dist');
 app.use('/admin', express.static(adminDistPath));
-app.get('/admin/*', (req, res) => { // Re-enabled for client-side routing
+app.get( /^\/admin\/.*/ , (req, res) => { // Changed to use a RegExp for Express 5 compatibility
     res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
@@ -51,6 +52,21 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey || process.env.SUP
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
+
+// Helper function to convert image URL to Data URI
+async function imageUrlToDataUri(url) {
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer'
+        });
+        const mimeType = response.headers['content-type'] || 'image/jpeg'; // Default if not found
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        return `data:${mimeType};base64,${base64}`;
+    } catch (error) {
+        console.error(`Failed to convert image URL ${url} to Data URI:`, error.message);
+        throw new Error(`Failed to process image URL for AI: ${url}`); // Re-throw to be caught by chat handler
+    }
+}
 
 // Multer setup for image uploads (memory storage)
 const imageStorage = multer.memoryStorage();
@@ -480,6 +496,110 @@ adminRouter.get('/analytics/summary', async (req, res) => {
     }
 });
 
+// New endpoint for messages over time
+adminRouter.get('/analytics/messages-over-time', async (req, res) => {
+    // Default to last 30 days
+    const period = req.query.period || '30d'; 
+    let startDate = new Date();
+
+    if (period === '7d') {
+        startDate.setDate(startDate.getDate() - 7);
+    } else if (period === '30d') {
+        startDate.setDate(startDate.getDate() - 30);
+    } else {
+        // Potentially support custom date ranges via req.query.startDate, req.query.endDate
+        // For now, default to 30 days if period is unrecognized
+        startDate.setDate(startDate.getDate() - 30);
+    }
+    startDate.setUTCHours(0, 0, 0, 0); // Start of the day UTC
+
+    try {
+        // This query is a bit simplified. For more complex grouping directly in Supabase
+        // with just the client library, it can be tricky. 
+        // A database function (RPC) would be more robust for daily counts.
+        // This approach fetches messages and processes them in JS, which is less efficient for large data.
+
+        const { data, error } = await supabase
+            .from('messages')
+            .select('timestamp')
+            .gte('timestamp', startDate.toISOString())
+            .order('timestamp', { ascending: true });
+
+        if (error) throw error;
+
+        // Process data to get daily counts
+        const dailyCounts = {};
+        data.forEach(msg => {
+            const date = new Date(msg.timestamp).toISOString().split('T')[0]; // YYYY-MM-DD
+            dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+        });
+
+        // Convert to array format for charts
+        const chartData = Object.keys(dailyCounts).map(date => ({
+            date: date,
+            count: dailyCounts[date]
+        })).sort((a, b) => new Date(a.date) - new Date(b.date)); // Ensure sorted by date
+
+        res.json(chartData);
+
+    } catch (error) {
+        console.error('Error fetching messages over time:', error);
+        res.status(500).json({ error: 'Failed to fetch messages over time', details: error.message });
+    }
+});
+
+// New endpoint for daily active users
+adminRouter.get('/analytics/daily-active-users', async (req, res) => {
+    const period = req.query.period || '30d'; 
+    let startDate = new Date();
+    if (period === '7d') {
+        startDate.setDate(startDate.getDate() - 7);
+    } else { // Default to 30 days
+        startDate.setDate(startDate.getDate() - 30);
+    }
+    startDate.setUTCHours(0, 0, 0, 0); 
+
+    try {
+        // Fetch messages and include user_id and guest_user_id from the related conversation
+        const { data, error } = await supabase
+            .from('messages')
+            .select('timestamp, conversations ( user_id, guest_user_id )') // Corrected select
+            .gte('timestamp', startDate.toISOString())
+            .order('timestamp', { ascending: true });
+
+        if (error) throw error;
+
+        const dailyActiveUsers = {}; // Store sets of unique user/guest IDs per day
+
+        data.forEach(msg => {
+            const date = new Date(msg.timestamp).toISOString().split('T')[0];
+            if (!dailyActiveUsers[date]) {
+                dailyActiveUsers[date] = new Set();
+            }
+            // Access user_id and guest_user_id from the nested conversations object
+            let identifier = null;
+            if (msg.conversations) { // Check if conversations data exists (it should based on select)
+                identifier = msg.conversations.user_id ? `user_${msg.conversations.user_id}` : (msg.conversations.guest_user_id ? `guest_${msg.conversations.guest_user_id}` : null);
+            }
+            
+            if (identifier) { // Ensure there is an identifier
+                 dailyActiveUsers[date].add(identifier);
+            }
+        });
+
+        const chartData = Object.keys(dailyActiveUsers).map(date => ({
+            date: date,
+            count: dailyActiveUsers[date].size // Count of unique users for that day
+        })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.json(chartData);
+
+    } catch (error) {
+        console.error('Error fetching daily active users:', error);
+        res.status(500).json({ error: 'Failed to fetch daily active users', details: error.message });
+    }
+});
+
 // Mount the admin router under /api/admin
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
@@ -497,7 +617,7 @@ app.post('/api/chat/upload', imageUpload.single('image'), async (req, res) => {
         const filePath = `chat_images/${fileName}`; // Define a path/bucket in Supabase Storage
 
         const { data, error: uploadError } = await supabase.storage
-            .from('momi_uploads') // Make sure this bucket exists in your Supabase Storage and has appropriate policies
+            .from('momi-uploads') // Make sure this bucket exists in your Supabase Storage and has appropriate policies
             .upload(filePath, req.file.buffer, {
                 contentType: req.file.mimetype,
                 upsert: false
@@ -507,7 +627,7 @@ app.post('/api/chat/upload', imageUpload.single('image'), async (req, res) => {
 
         // Get public URL (ensure your bucket has appropriate RLS for public reads or create signed URLs)
         const { data: publicUrlData } = supabase.storage
-            .from('momi_uploads')
+            .from('momi-uploads')
             .getPublicUrl(filePath);
 
         if (!publicUrlData || !publicUrlData.publicUrl) {
@@ -517,8 +637,15 @@ app.post('/api/chat/upload', imageUpload.single('image'), async (req, res) => {
         res.json({ imageUrl: publicUrlData.publicUrl, filePath: data.path });
 
     } catch (error) {
-        console.error('Error uploading image to Supabase:', error);
-        res.status(500).json({ error: 'Failed to upload image', details: error.message });
+        console.error('Error uploading image to Supabase. Full error object:', JSON.stringify(error, null, 2));
+        let errorDetails = error.message;
+        if (error.data && error.data.message) { // Supabase specific error structure
+            errorDetails = error.data.message;
+        } else if (error.response && error.response.data && error.response.data.message) { // Axios-like error structure
+            errorDetails = error.response.data.message;
+        }
+        console.error('Extracted error details for response:', errorDetails);
+        res.status(500).json({ error: 'Failed to upload image', details: errorDetails });
     }
 });
 
@@ -532,6 +659,7 @@ app.post('/api/chat/speech-to-text', audioUpload.single('audio'), async (req, re
         const transcription = await openai.audio.transcriptions.create({
             model: "whisper-1",
             file: fs.createReadStream(req.file.path),
+            language: "en" // Specify English language
         });
 
         // Clean up the temporarily saved audio file
@@ -685,35 +813,71 @@ app.post('/api/chat/message', async (req, res) => {
         const momiBasePrompt = await getMomiBasePrompt();
         let systemPrompt = momiBasePrompt;
         if (ragContext) {
-            systemPrompt = `You are MOMi, a friendly and empathetic assistant. Relevant information from documents: \n${ragContext}\n\nBased on this information and your general knowledge, please answer the user's question. If the information isn't relevant, rely on your general knowledge. Original base prompt: ${momiBasePrompt}`;
+            systemPrompt = `You are MOMi, a friendly and empathetic assistant. Relevant information from documents: \n${ragContext}\n\nBased on this information and your general knowledge, please answer the user\'s question. If the information isn\'t relevant, rely on your general knowledge. Original base prompt: ${momiBasePrompt}`;
         }
+
+        // Map historical messages to OpenAI format, converting past images to text placeholders
+        const historicalOpenAIMessages = recentMessages.map(msg => {
+            let openAiMsgContent;
+            if (msg.content_type === 'image_url') {
+                // Represent historical images as text placeholders
+                openAiMsgContent = `[User sent an image: ${msg.metadata?.original_user_prompt || 'User uploaded an image.'}]`;
+            } else {
+                openAiMsgContent = msg.content; // Text message from history or MOMi
+            }
+            return {
+                role: msg.sender_type === 'momi' ? 'assistant' : 'user',
+                content: openAiMsgContent
+            };
+        });
 
         const openAIMessages = [
             { role: "system", content: systemPrompt },
-            ...recentMessages.map(msg => {
-                let openAiMsgContent;
-                if (msg.content_type === 'image_url') {
-                    openAiMsgContent = [
-                        { type: "image_url", image_url: { url: msg.content } },
-                        // Include original prompt if available in metadata
-                        { type: "text", text: msg.metadata?.original_user_prompt || "Describe this image." }
-                    ];
-                } else {
-                    openAiMsgContent = msg.content;
-                }
-                return {
-                    role: msg.sender_type === 'momi' ? 'assistant' : 'user',
-                    content: openAiMsgContent
-                };
-            })
+            ...historicalOpenAIMessages
         ];
+
+        // Add current user's message (text and/or image) as the last message
+        let currentUserMessageContent = [];
+        if (imageUrl) { // Current message includes an image
+            try {
+                const dataUri = await imageUrlToDataUri(imageUrl);
+                currentUserMessageContent.push({ type: "image_url", image_url: { url: dataUri } });
+                // Add the text part of the message if it exists
+                if (message) {
+                    currentUserMessageContent.push({ type: "text", text: message });
+                } else {
+                    // If only image is sent, add a default text part if your model requires it
+                    // or ensure your logic handles image-only inputs if supported.
+                    // For gpt-4o, it's good practice to have a text part, even if minimal.
+                    currentUserMessageContent.push({ type: "text", text: "Describe this image." });
+                }
+            } catch (conversionError) {
+                console.error("Error converting current user image to data URI:", conversionError.message);
+                // Fallback: send text message indicating image error
+                const fallbackText = message ? `[Image upload failed] ${message}` : "[Image upload failed]";
+                currentUserMessageContent.push({ type: "text", text: fallbackText });
+            }
+        } else if (message) { // Current message is text-only
+            currentUserMessageContent.push({ type: "text", text: message });
+        }
         
-        // Note: The current user message with image is already part of recentMessages if correctly formatted above
-        // No need to push it again unless logic changes to exclude current message from history query.
+        // Only add user message if there's content for it
+        if (currentUserMessageContent.length > 0) {
+            // If image was processed, content is an array. If only text, it should be a string.
+            // GPT-4o (and vision models) expect the 'content' for image messages to be an array.
+            // For text-only messages, 'content' should be a string.
+            if (imageUrl && currentUserMessageContent.some(part => part.type === 'image_url')) {
+                 openAIMessages.push({ role: "user", content: currentUserMessageContent });
+            } else if (message) { // Text only, ensure content is a string
+                 openAIMessages.push({ role: "user", content: message });
+            }
+        }
+        
+        console.log("Sending to OpenAI. Last user message content parts:", JSON.stringify(currentUserMessageContent, null, 2));
 
         // 4. Call OpenAI API
         const completion = await openai.chat.completions.create({
-            model: imageUrl ? "gpt-4-vision-preview" : "gpt-3.5-turbo",
+            model: imageUrl ? "gpt-4o" : "gpt-3.5-turbo",
             messages: openAIMessages,
             max_tokens: imageUrl ? 500 : (ragContext ? 400 : 150) 
         });

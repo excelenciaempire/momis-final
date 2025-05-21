@@ -4,7 +4,22 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import './ChatWindow.css';
 
-const ChatWindow = ({ userId, guestUserId, sessionToken }) => {
+// Simple SVG icon for Close button (can be replaced with a proper icon library later)
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+// Simple M logo for the header
+const MomiLogo = () => (
+  <div className="chat-window-header-logo">
+    <span>M</span>
+  </div>
+);
+
+const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen }) => {
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +28,19 @@ const ChatWindow = ({ userId, guestUserId, sessionToken }) => {
   const currentUserId = userId || guestUserId;
   const userType = userId ? 'user' : 'guest';
 
+  // Set initial message from MOMi
+  useEffect(() => {
+    setMessages([
+      {
+        id: 'momi-initial-greeting',
+        sender_type: 'momi',
+        content_type: 'text',
+        content: "Hi, I'm MOMi – your personal wellness guide and parenting support coach. I'm here to help you feel more confident and connected in your journey to raise a healthy family.\n\nWhat would you like support with today?\n\n• A quick tip for meals, sleep, or stress\n• Help calming a tough moment with your child\n• Ideas to feel more balanced or energized\n\nJust type what's on your mind. I'm here 💜",
+        timestamp: new Date().toISOString(),
+      }
+    ]);
+  }, []); // Run only once on component mount
+
   // Fetch history when conversationId changes or component mounts with a valid user ID
   useEffect(() => {
     const fetchHistory = async (convId) => {
@@ -20,7 +48,17 @@ const ChatWindow = ({ userId, guestUserId, sessionToken }) => {
       setIsLoading(true);
       try {
         const response = await axios.get(`/api/chat/history/${convId}`);
-        setMessages(response.data);
+        // Prepend history to the initial greeting, or replace if history is substantial
+        if (response.data && response.data.length > 0) {
+          setMessages(prevMessages => {
+            const initialMessage = prevMessages.find(m => m.id === 'momi-initial-greeting');
+            const history = response.data.filter(m => m.id !== 'momi-initial-greeting'); // Avoid duplicates if any
+            if (initialMessage && history.length === 0) { // Only initial message was present
+                return [initialMessage, ...history]; // Should not happen if history is fetched based on convId
+            }
+            return history; // If history exists, it should replace the initial greeting
+          });
+        }
         setError('');
       } catch (err) {
         console.error('Error fetching chat history:', err);
@@ -33,6 +71,20 @@ const ChatWindow = ({ userId, guestUserId, sessionToken }) => {
     // If there's a conversationId, fetch its history
     if (conversationId) {
         fetchHistory(conversationId);
+    } else {
+      // No conversation ID yet, ensure initial message is set (if not already by the first useEffect)
+      // This handles cases where currentUserId might be available but no conversationId yet.
+      if (messages.length === 0 || (messages.length === 1 && messages[0].id !== 'momi-initial-greeting')) {
+         setMessages([
+          {
+            id: 'momi-initial-greeting',
+            sender_type: 'momi',
+            content_type: 'text',
+            content: "Hi, I'm MOMi – your personal wellness guide and parenting support coach. I'm here to help you feel more confident and connected in your journey to raise a healthy family.\n\nWhat would you like support with today?\n\n• A quick tip for meals, sleep, or stress\n• Help calming a tough moment with your child\n• Ideas to feel more balanced or energized\n\nJust type what's on your mind. I'm here 💜",
+            timestamp: new Date().toISOString(),
+          }
+        ]);
+      }
     }
     // TODO: Consider fetching existing conversation ID for the user/guest if not passed
 
@@ -164,13 +216,28 @@ const ChatWindow = ({ userId, guestUserId, sessionToken }) => {
     // but good as a safeguard within ChatWindow itself.
     return (
         <div className="chat-window-container">
+            <div className="chat-window-header">
+                <h2 className="chat-window-title">MOMi Support</h2>
+            </div>
             <p className="chat-loading-error">Initializing session... If this persists, please refresh.</p>
         </div>
     );
   }
 
   return (
-    <div className="chat-window-container">
+    <div className="chat-window-main-content">
+      <div className="chat-window-header">
+        <div className="header-content-left">
+          <MomiLogo />
+          <div className="header-titles">
+            <h2 className="chat-window-title">MOMi</h2>
+            <p className="chat-window-subtitle">Your Wellness Assistant</p>
+          </div>
+        </div>
+        <button onClick={toggleChatOpen} className="chat-window-close-button" aria-label="Close chat">
+          <CloseIcon />
+        </button>
+      </div>
       {error && <p className="chat-error-message">{error}</p>}
       <MessageList messages={messages} isLoading={isLoading && messages.length === 0} />
       <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />

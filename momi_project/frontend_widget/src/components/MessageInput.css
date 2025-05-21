@@ -1,130 +1,183 @@
 .message-input-form {
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  border-top: 1px solid var(--purple-light);
-  background-color: var(--white-soft);
+  padding: 10px 12px 12px 12px; /* Fine-tuned padding for mobile */
+  border-top: 1px solid var(--momi-border-light-gray, #E0E0E0); /* Lighter border */
+  background-color: var(--momi-input-background, #FFFFFF); /* White background for input area */
+  border-bottom-left-radius: 16px; /* Match main chat window rounding */
+  border-bottom-right-radius: 16px;
 }
 
 .input-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 8px; /* Reduced gap for a tighter mobile layout */
 }
 
 .text-input {
   flex-grow: 1;
-  padding: 10px;
-  border: 1px solid var(--gray-light);
-  border-radius: 20px;
-  font-size: 1em;
+  padding: 10px 16px; /* Adjusted padding for comfort */
+  border: none; /* Remove border, rely on background and shadow */
+  background-color: var(--momi-input-field-background, #F4F6F8); /* Light gray background */
+  border-radius: 20px; /* Pill shape */
+  font-size: 0.95em; /* Slightly larger font for readability */
+  line-height: 1.4;
   outline: none;
+  color: var(--momi-text-dark, #333333);
+}
+
+.text-input::placeholder {
+  color: var(--momi-text-secondary, #888888); /* Softer placeholder */
 }
 
 .text-input:focus {
-  border-color: var(--purple-main);
+  /* No explicit focus border, keep it clean. Can add subtle shadow if desired */
+  box-shadow: 0 0 0 2px rgba(123, 31, 162, 0.1); /* Softer focus shadow */
 }
 
 .text-input:disabled {
-  background-color: #f0f0f0;
+  background-color: var(--momi-gray-disabled-light, #E9ECEF);
+  cursor: not-allowed;
 }
 
 .control-button {
   background-color: transparent;
   border: none;
-  color: var(--purple-main);
-  font-size: 1.5em; /* Larger icons */
-  padding: 5px;
+  color: var(--momi-icon-color, #757575); /* Standard icon color */
+  padding: 0; /* Remove padding, rely on icon size and button dimensions */
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 38px; /* Slightly smaller buttons for mobile */
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
+}
+
+.control-button svg {
+    width: 20px; /* Adjusted SVG icon size */
+    height: 20px;
 }
 
 .control-button.disabled,
 .control-button:disabled {
-  color: var(--gray-light);
+  color: var(--momi-gray-disabled, #BDBDBD);
   cursor: not-allowed;
-  background-color: transparent !important; /* Override hover if also disabled class is present */
+  background-color: transparent !important; /* Ensure no background on disabled */
 }
 
 .control-button:hover:not(:disabled):not(.disabled) {
-  background-color: var(--purple-light);
+  background-color: var(--momi-hover-light-gray, #E8E8E8); /* Light gray hover */
 }
 
+/* Send button is a special control button */
 .send-button {
-  background-color: var(--magenta-vibrant);
-  color: var(--white-soft);
-  font-size: 1em; /* Text instead of icon */
-  padding: 0 15px; /* Adjust padding for text */ 
+  background-color: var(--momi-purple-primary); /* Purple background */
+  color: var(--momi-white); /* White icon */
+}
+
+.send-button:hover:not(:disabled):not(.disabled) {
+  background-color: var(--momi-purple-dark); /* Darker purple on hover */
+}
+
+.send-button svg {
+    width: 20px;
+    height: 20px;
 }
 
 .send-button:disabled {
-  background-color: var(--gray-light) !important; /* Ensure disabled style overrides */
-  color: #f0f0f0;
+  background-color: var(--momi-gray-disabled, #BDBDBD) !important;
+  color: var(--momi-text-disabled-on-gray, #E0E0E0) !important;
 }
 
+/* Image preview container */
 .image-preview-container {
   position: relative;
-  margin-bottom: 8px;
-  max-width: 150px;
-  border: 1px solid var(--purple-light);
+  margin-bottom: 10px;
+  max-width: 80px; /* Smaller preview */
+  max-height: 80px;
+  border: 1px solid var(--momi-border-light-gray, #E0E0E0);
   border-radius: 8px;
   overflow: hidden;
+  align-self: flex-start; /* Align to the left */
 }
 
 .image-preview {
   display: block;
-  max-width: 100%;
-  height: auto;
-  max-height: 100px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .remove-image-btn {
   position: absolute;
-  top: 2px;
+  top: 2px; /* Adjusted position */
   right: 2px;
   background-color: rgba(0,0,0,0.5);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
-  line-height: 18px;
+  width: 18px; /* Smaller button */
+  height: 18px;
+  font-size: 10px; /* Smaller X */
+  line-height: 16px;
   text-align: center;
   cursor: pointer;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .voice-error-message {
-  color: #d8000c; /* Red for errors */
+  color: var(--momi-error-red, #D32F2F); /* Themed error color */
   font-size: 0.8em;
   padding: 5px 0;
   text-align: center;
   margin-bottom: 5px;
 }
 
-.voice-button.recording {
-  color: red;
-  animation: pulse 1.5s infinite;
+.voice-button {
+    color: var(--momi-icon-color, #757575); /* Default icon color */
 }
 
-@keyframes pulse {
+.voice-button.recording {
+  color: var(--momi-red-accent, #E53935); /* Accent red for recording */
+  background-color: transparent; /* No background color change when recording, just icon and pulse */
+  animation: pulse-mic 1.5s infinite;
+}
+
+.voice-button.recording:hover {
+    background-color: var(--momi-hover-light-gray, #E8E8E8); /* Still allow hover effect */
+}
+
+/* Adjusted Pulse animation for mic button */
+@keyframes pulse-mic {
   0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4);
   }
   70% {
-    transform: scale(1.1);
-    box-shadow: 0 0 10px 10px rgba(255, 0, 0, 0);
+    box-shadow: 0 0 0 8px rgba(229, 57, 53, 0);
   }
   100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0);
   }
+}
+
+/* Add styles for image upload label to look like a button */
+.image-upload-button {
+    /* Inherits .control-button styles */
+    color: var(--momi-icon-color, #757575); /* Default icon color */
+}
+
+.image-upload-button:hover:not(.disabled) {
+    background-color: var(--momi-hover-light-gray, #E8E8E8);
+}
+
+/* Style for the emoji/icon inside the label if you use one */
+.image-upload-button span {
+    font-size: 1.2em; /* Adjust if you use an emoji or text */
+    /* Vertical alignment might be needed depending on icon/emoji */
 } 

@@ -20,3 +20,6 @@ args = "cd momi_project/backend && npm start"
 [[ports]]
 localPort = 3001
 externalPort = 80
+
+[deployment]
+deploymentTarget = "cloudrun"

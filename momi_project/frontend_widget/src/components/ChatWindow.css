@@ -4,6 +4,14 @@
   flex-direction: column;
   overflow: hidden; /* Contains MessageList which will scroll */
   background-color: var(--white-soft);
+  /* Added for new design - wrapper for the actual chat content */
+  border-radius: 16px; /* Rounded corners for the main chat window */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Subtle shadow */
+  max-width: 400px; /* Max width for desktop, similar to image */
+  width: 100%;
+  height: 70vh; /* Or a fixed height like 600px, adjust as needed */
+  max-height: 700px;
+  /* Position it fixed if it's a popup, or manage in App.jsx */
 }
 
 .chat-error-message {
@@ -24,13 +32,154 @@
 
 .chat-disclaimer {
   padding: 8px 12px;
-  background-color: var(--purple-light);
+  background-color: var(--momi-gray-background); /* Changed from purple-light */
   text-align: center;
-  font-size: 0.7em;
-  color: var(--gray-dark);
-  border-top: 1px solid var(--purple-main);
+  font-size: 0.7em; /* Kept small */
+  color: var(--momi-text-secondary); /* Use a secondary text color */
+  border-top: 1px solid var(--momi-border-gray);
+  /* Removed border-top: 1px solid var(--purple-main); */
 }
 
 .chat-disclaimer p {
   margin: 0;
-} 
+}
+
+/* Styles for the main content area INSIDE the chat window wrapper */
+.chat-window-main-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill the wrapper provided by App.jsx */
+  background-color: var(--momi-gray-background); /* Changed from momi-white */
+  border-radius: 16px; /* Rounded corners for the main chat window content */
+  overflow: hidden; /* Ensure this container also clips if its content tries to exceed it */
+}
+
+.chat-window-header {
+  background-color: var(--momi-purple-primary); /* Using a defined primary purple */
+  /* background-image: url('https://your-image-url/butterfly-background.svg'); // Placeholder for actual butterfly pattern */
+  /* background-blend-mode: multiply; // If you want the color to tint the image */
+  /* background-repeat: no-repeat; */
+  /* background-position: right -20px top -30px; // Adjust as needed */
+  /* background-size: 120px auto; // Adjust as needed */
+
+  color: var(--momi-white); /* Text color on purple header */
+  padding: 12px 18px; /* Adjusted padding */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 70px; /* Adjusted height */
+  flex-shrink: 0;
+  border-top-left-radius: 16px; /* Match main content rounding */
+  border-top-right-radius: 16px; /* Match main content rounding */
+  position: relative; /* For potential absolute positioning of decorative elements */
+}
+
+/* Placeholder for butterfly/mandala pattern if you add it as an ::after pseudo-element */
+/* .chat-window-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px; 
+  height: 100%;
+  background-image: url('https://your-image-url/butterflies.svg'); 
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+  opacity: 0.2; 
+} */
+
+.header-content-left {
+  display: flex;
+  align-items: center;
+}
+
+.chat-window-header-logo {
+  width: 40px; /* Slightly larger */
+  height: 40px;
+  background-color: var(--momi-white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: var(--momi-purple-primary); /* Purple M */
+  font-weight: bold; /* Bolder M */
+  font-size: 1.6em; /* Larger M */
+  flex-shrink: 0;
+  line-height: 1; /* Helps center single char */
+}
+
+.chat-window-header-logo span {
+  line-height: 1; 
+  transform: translateY(-1px); /* Fine-tune M vertical position */
+}
+
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  /* justify-content: center; */ /* Removed to allow natural top alignment within the flex item */
+}
+
+.chat-window-title {
+  margin: 0;
+  font-size: 1.25em; /* Larger title: MOMi */
+  font-weight: 700; /* Bolder */
+  line-height: 1.2;
+  color: var(--momi-white);
+}
+
+.chat-window-subtitle {
+  margin: 0;
+  font-size: 0.8em; /* Slightly larger subtitle */
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--momi-white); /* Ensure it's white */
+  opacity: 0.9;
+}
+
+.chat-window-close-button {
+  background: none;
+  border: none;
+  color: var(--momi-white); /* Ensure icon is white */
+  cursor: pointer;
+  padding: 8px; /* Increase clickable area */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.chat-window-close-button:hover {
+  opacity: 1;
+}
+
+.chat-window-close-button svg {
+  width: 22px; /* Adjust icon size as needed */
+  height: 22px;
+}
+
+/* Existing .chat-window-container renamed to .chat-window-main-content */
+/* Keep other specific styles like .chat-error-message, .chat-loading-error */
+
+.chat-error-message {
+  padding: 10px;
+  background-color: #ffdddd; /* Consider theming this too */
+  color: #d8000c;
+  text-align: center;
+  border-bottom: 1px solid #ffbaba;
+  font-size: 0.9em;
+  flex-shrink: 0;
+}
+
+.chat-loading-error {
+  padding: 20px;
+  text-align: center;
+  color: var(--momi-text-dark);
+  font-style: italic;
+  margin: auto; /* Center it if it's the only thing visible */
+}
+
+/* Ensure MessageList and MessageInput will take remaining space */
+/* This might be handled in MessageList.css by setting flex-grow: 1 */ 

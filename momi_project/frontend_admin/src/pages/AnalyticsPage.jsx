@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
   TimeScale, // Import TimeScale for time series data
+  Filler,    // Import the Filler plugin
 } from 'chart.js';
 import 'chartjs-adapter-date-fns'; // Import for side effects (auto-registration)
 import { Line } from 'react-chartjs-2';
@@ -26,6 +27,7 @@ ChartJS.register(
   Tooltip,
   Legend,
   TimeScale,
+  Filler,    // Register the Filler plugin
   // Adapter is registered by the import above
 );
 
