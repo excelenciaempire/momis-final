@@ -40,9 +40,10 @@
 }
 
 .form-actions {
-  margin-top: 15px;
+  margin-top: 20px;
   display: flex;
-  gap: 10px;
+  gap: 15px;
+  justify-content: flex-start;
 }
 
 .form-actions .save-button {
@@ -99,4 +100,59 @@
   border-radius: 5px;
   margin-top: 10px;
   font-size: 0.9em;
-} 
+}
+
+.system-settings-container {
+  /* Page specific container styles if needed */
+}
+
+/* Styles for the prompt textarea if default .form-group textarea is not sufficient */
+.base-prompt-textarea {
+  /* font-family: monospace; */ /* Optional: for a more code-like feel */
+  line-height: 1.6;
+  min-height: 250px; /* Ensure a good default height */
+}
+
+.loading-prompt-placeholder {
+  background-color: var(--gray-ultralight);
+  border: 1px dashed var(--border-color);
+  padding: 40px 20px;
+  text-align: center;
+  border-radius: 6px;
+  color: var(--gray-dark);
+  min-height: 200px; /* Match approx textarea height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-prompt-placeholder .spinner {
+  /* Basic CSS Spinner */
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: var(--primary-accent);
+  margin-top: 15px;
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Add specific message type for info, if not already global */
+.info-message {
+  color: #00529B;
+  background-color: #BDE5F8;
+  border: 1px solid #00529B;
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin: 15px 0;
+  font-size: 0.95em;
+}
+
+/* Ensure .card .card-header styles are applied from App.css */
+/* Ensure .button and .button.secondary styles are applied from App.css */ 

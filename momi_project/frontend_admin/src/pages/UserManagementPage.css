@@ -202,4 +202,162 @@
 /* Specificity for momi message timestamp */
 .message-momi .message-timestamp {
     color: var(--white-soft, #FFF8FC);
+}
+
+.user-management-container {
+    /* Page specific container styles if needed */
+}
+
+.tabs-container {
+    display: flex;
+    margin-bottom: 20px; /* Overrides .mb-2 if more specific spacing is needed */
+}
+
+/* .button styling (primary/secondary) comes from App.css */
+
+.panels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.list-panel {
+    /* .card styles are applied globally */
+    min-height: 300px; /* Ensure panels have some min height */
+    display: flex;
+    flex-direction: column; /* Ensure card-header and item-list stack correctly */
+}
+
+.list-panel .card-header {
+    margin-bottom: 10px;
+}
+
+.item-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto; /* Allow scrolling within the list if content overflows */
+    flex-grow: 1; /* Allow list to take available space in flex column */
+}
+
+.list-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.95em;
+}
+
+.list-item:last-child {
+    border-bottom: none;
+}
+
+.list-item:hover {
+    background-color: var(--purple-light);
+    color: var(--purple-main);
+}
+
+.list-item.selected {
+    background-color: var(--primary-accent);
+    color: var(--text-on-accent);
+    font-weight: bold;
+}
+
+.list-item .date-info {
+    display: block; /* Or inline-block and float right */
+    font-size: 0.8em;
+    color: var(--gray-dark);
+    margin-top: 3px;
+}
+
+.list-item.selected .date-info {
+    color: var(--purple-light);
+}
+
+.loading-text,
+.empty-text {
+    text-align: center;
+    padding: 20px;
+    color: var(--gray-dark);
+    font-style: italic;
+}
+
+/* Messages Panel Styling */
+.messages-panel {
+    /* .card styles are applied globally */
+    /* Spans multiple columns if it's the only one or wider */
+    /* grid-column: span 2; /* Example if you want it wider in a 3-col grid */
+    display: flex; 
+    flex-direction: column; /* Ensure header and display area stack */
+}
+
+.messages-display-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--gray-ultralight); /* Light background for messages */
+    border-radius: 0 0 var(--card-border-radius, 8px) var(--card-border-radius, 8px); /* Match card */
+    min-height: 300px; /* Give some space for messages */
+}
+
+.message-bubble {
+    padding: 10px 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    max-width: 80%;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.message-bubble .sender-label {
+    font-size: 0.8em;
+    margin-bottom: 4px;
+    color: var(--gray-dark);
+}
+
+.message-bubble .timestamp {
+    font-size: 0.75em;
+    color: var(--gray-dark);
+    display: block;
+    text-align: right;
+    margin-top: 5px;
+}
+
+.message-bubble.msg-user {
+    background-color: var(--gray-medium);
+    color: var(--text-primary);
+    margin-left: auto; /* Align to right */
+    border-bottom-right-radius: 4px;
+}
+
+.message-bubble.msg-momi {
+    background-color: var(--purple-light);
+    color: var(--purple-main); /* Ensuring contrast */
+    margin-right: auto; /* Align to left */
+    border-bottom-left-radius: 4px;
+}
+
+.message-bubble.msg-system {
+    background-color: var(--gray-light);
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.message-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.image-message-content .image-prompt {
+    font-size: 0.9em;
+    font-style: italic;
+    color: var(--gray-dark);
+    margin-top: 5px;
 } 

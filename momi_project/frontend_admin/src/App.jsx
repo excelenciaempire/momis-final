@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, NavLink } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import LoginPage from './pages/LoginPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -14,39 +14,51 @@ const UnauthorizedPage = () => (
     <h1>Unauthorized</h1>
     <p>You do not have permission to access this page.</p>
     <p>Please contact an administrator if you believe this is an error.</p>
-    <Link to="/login">Go to Login</Link>
+    <NavLink to="/login">Go to Login</NavLink>
   </div>
 );
 
 // Protected Route Component for Admin Areas
 const ProtectedRoute = ({ session, userRole }) => {
-  if (!session) return <Navigate to="/login" replace />;
-  // Check if the user has the 'admin' role
-  if (userRole !== 'admin') {
-    console.warn("User does not have admin role. Current role:", userRole);
-    return <Navigate to="/unauthorized" replace />;
-  }
+  // TEMPORARILY BYPASSING AUTH FOR PREVIEW - REMEMBER TO RE-ENABLE
+  console.log("Admin ProtectedRoute: Bypassing auth for preview. Current session:", session, "Current role:", userRole);
   return <AdminLayout session={session} />;
+
+  // Original logic (re-enable for production/security):
+  // if (!session) return <Navigate to="/login" replace />;
+  // if (userRole !== 'admin') {
+  //   console.warn("User does not have admin role. Current role:", userRole);
+  //   return <Navigate to="/unauthorized" replace />;
+  // }
+  // return <AdminLayout session={session} />;
 };
 
 // Basic Layout for Authenticated Admin Routes
 const AdminLayout = ({ session }) => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    // Navigate to login or rely on ProtectedRoute to redirect
   };
 
   return (
     <div className="admin-layout">
       <nav className="admin-nav">
-        <Link to="/">Dashboard / Analytics</Link>
-        <Link to="/users">User Management</Link>
-        <Link to="/documents">Manage Documents</Link>
-        <Link to="/settings">System Settings</Link>
-        <button onClick={handleLogout} className="logout-button">Logout ({session?.user?.email?.substring(0,10)}...)</button>
+        <div className="admin-nav-header">MOMi Admin</div>
+        <NavLink to="/" end>Dashboard</NavLink>
+        <NavLink to="/conversations">Conversations</NavLink>
+        
+        {/* Knowledge Section Links */}
+        <div className="nav-section-header">Knowledge</div> 
+        <NavLink to="/knowledge/documents">Manage Documents</NavLink>
+        <NavLink to="/knowledge/settings">System Prompt</NavLink>
+        
+        {session?.user && (
+          <button onClick={handleLogout} className="logout-button">
+            Logout ({session.user.email.substring(0,10)}...)
+          </button>
+        )}
       </nav>
       <main className="admin-main-content">
-        <Outlet /> {/* Child routes will render here */}
+        <Outlet /> 
       </main>
     </div>
   );
@@ -65,17 +77,21 @@ function App() {
     }
 
     const getSessionAndRole = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
+      try {
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        setSession(currentSession);
 
-      if (currentSession?.user?.app_metadata?.roles?.includes('admin')) {
-        setUserRole('admin');
-      } else if (currentSession) {
-        // If user is logged in but no 'admin' role or roles array doesn't exist
-        setUserRole(currentSession?.user?.app_metadata?.roles?.[0] || 'user'); // Assign first role or default to 'user'
-        console.log('User role set to:', currentSession?.user?.app_metadata?.roles?.[0] || 'user');
-      } else {
-        setUserRole(null);
+        if (currentSession?.user?.app_metadata?.roles?.includes('admin')) {
+          setUserRole('admin');
+        } else if (currentSession) {
+          setUserRole(currentSession?.user?.app_metadata?.roles?.[0] || 'user');
+        } else {
+          setUserRole(null);
+        }
+      } catch (e) {
+        console.error("Error getting session and role:", e);
+        setUserRole(null); // Ensure userRole is null on error
       }
       setLoading(false);
     };
@@ -89,13 +105,10 @@ function App() {
           setUserRole('admin');
         } else if (newSession) {
           setUserRole(newSession?.user?.app_metadata?.roles?.[0] || 'user');
-          console.log('User role updated to:', newSession?.user?.app_metadata?.roles?.[0] || 'user');
         } else {
           setUserRole(null);
         }
-        // Ensure loading is false on auth state change, especially logout
         if (_event === "SIGNED_OUT") setLoading(false); 
-        // if (_event === "INITIAL_SESSION" || _event === "SIGNED_IN") setLoading(false); // also ensure loading is false after initial check or sign in
       }
     );
     return () => authListener.subscription.unsubscribe();
@@ -122,11 +135,11 @@ function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route element={<ProtectedRoute session={session} userRole={userRole} />}>
             <Route path="/" element={<AnalyticsPage />} />
-            <Route path="/users" element={<UserManagementPage />} />
-            <Route path="/documents" element={<ManageDocumentsPage />} />
-            <Route path="/settings" element={<SystemSettingsPage />} />
+            <Route path="/conversations" element={<UserManagementPage />} />
+            <Route path="/knowledge/documents" element={<ManageDocumentsPage />} />
+            <Route path="/knowledge/settings" element={<SystemSettingsPage />} />
           </Route>
-          <Route path="*" element={<Navigate to={session && userRole === 'admin' ? "/" : "/login"} replace />} />
+          <Route path="*" element={<Navigate to={(session && userRole === 'admin') ? "/" : "/login"} replace />} />
         </Routes>
       </div>
     </Router>

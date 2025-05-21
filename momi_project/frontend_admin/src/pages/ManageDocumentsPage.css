@@ -65,4 +65,81 @@
   background-color: #c0392b;
 }
 
-/* Add styles for re-index button if needed */ 
+/* Add styles for re-index button if needed */
+
+.manage-documents-container {
+    /* Page specific container styles if needed */
+}
+
+/* Styles for the form within the card if specific layout is needed */
+/* .card form {
+    padding-top: 15px; 
+} */
+
+.table-responsive {
+    overflow-x: auto; /* Allows table to scroll horizontally on small screens */
+}
+
+/* Styles for action buttons in table, if .button.small-button needs definition */
+.button.small-button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.actions-cell button:not(:last-child) {
+    margin-right: 8px;
+}
+
+/* Responsive table data labels - hidden by default */
+[data-label] {
+  /* Standard display for larger screens */
+}
+
+@media (max-width: 768px) {
+  table thead {
+    display: none; /* Hide table headers on small screens */
+  }
+
+  table tr {
+    display: block;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  table td {
+    display: block;
+    text-align: right; /* Align cell content to the right */
+    padding-left: 50%; /* Make space for the label */
+    position: relative;
+    border-bottom: 1px solid var(--gray-light); /* Add separator between cells */
+  }
+
+  table td:last-child {
+    border-bottom: none;
+  }
+
+  table td::before {
+    content: attr(data-label); /* Use data-label attribute for pseudo-element content */
+    position: absolute;
+    left: 10px;
+    width: calc(50% - 20px); /* Adjust width considering padding */
+    padding-right: 10px;
+    font-weight: bold;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .actions-cell {
+    text-align: left; /* Override for action cells if labels are not desired or buttons stack */
+    padding-left: 10px; /* Reset padding if no label */
+  }
+  .actions-cell::before {
+      content: ""; /* Hide label for actions cell if preferred */
+  }
+  .actions-cell button {
+      display: inline-block; /* or block for stacking */
+      margin: 5px 5px 5px 0;
+  }
+} 

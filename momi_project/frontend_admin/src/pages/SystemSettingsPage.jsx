@@ -8,16 +8,15 @@ const SystemSettingsPage = () => {
   const [initialPrompt, setInitialPrompt] = useState(''); // To compare for changes
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [notification, setNotification] = useState('');
-  const [error, setError] = useState('');
+  const [notification, setNotification] = useState({ type: '', message: '' }); // type: 'success', 'info', or 'error'
 
   const fetchBasePrompt = useCallback(async () => {
     setIsLoading(true);
-    setError('');
-    setNotification('');
+    setNotification({ type: '', message: '' });
     try {
-      const session = (await supabase.auth.getSession()).data.session;
-      if (!session) throw new Error('Not authenticated');
+      const sessionData = await supabase.auth.getSession();
+      const session = sessionData?.data?.session;
+      if (!session) throw new Error('Not authenticated. Please log in.');
 
       const response = await axios.get('/api/admin/system-settings/momi-base-prompt', {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -26,7 +25,7 @@ const SystemSettingsPage = () => {
       setInitialPrompt(response.data.momi_base_prompt);
     } catch (err) {
       console.error('Error fetching base prompt:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to load base prompt.');
+      setNotification({ type: 'error', message: err.response?.data?.error || err.message || 'Failed to load base prompt.'});
     }
     setIsLoading(false);
   }, []);
@@ -37,71 +36,89 @@ const SystemSettingsPage = () => {
 
   const handlePromptChange = (e) => {
     setBasePrompt(e.target.value);
-    if (error) setError(''); // Clear error when user starts typing
-    if (notification) setNotification('');
+    if (notification.message) setNotification({ type: '', message: '' }); // Clear notification when user starts typing
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (basePrompt === initialPrompt) {
-      setNotification('No changes to save.');
+      setNotification({ type: 'info', message: 'No changes to save.'});
       return;
     }
     setIsSaving(true);
-    setError('');
-    setNotification('');
+    setNotification({ type: '', message: '' });
     try {
-      const session = (await supabase.auth.getSession()).data.session;
-      if (!session) throw new Error('Not authenticated');
+      const sessionData = await supabase.auth.getSession();
+      const session = sessionData?.data?.session;
+      if (!session) throw new Error('Not authenticated. Please log in.');
 
       await axios.put('/api/admin/system-settings/momi-base-prompt', 
         { new_prompt_value: basePrompt }, 
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
-      setInitialPrompt(basePrompt); // Update initial prompt to current saved value
-      setNotification('MOMi base prompt updated successfully!');
+      setInitialPrompt(basePrompt); 
+      setNotification({ type: 'success', message: 'MOMi base prompt updated successfully!'});
     } catch (err) {
       console.error('Error updating base prompt:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to update base prompt.');
+      setNotification({ type: 'error', message: err.response?.data?.error || err.message || 'Failed to update base prompt.'});
     }
     setIsSaving(false);
   };
 
   const handleReset = () => {
     setBasePrompt(initialPrompt);
-    setError('');
-    setNotification('');
+    setNotification({ type: '', message: '' });
   };
 
+  const hasChanges = basePrompt !== initialPrompt;
+
   return (
-    <div className="system-settings-page">
-      <h2>System Settings</h2>
-      <form onSubmit={handleSubmit} className="prompt-form">
-        <h3>MOMi Base Prompt</h3>
-        <p>This prompt guides MOMi's core personality, instructions, and empathetic tone. Edit with care.</p>
-        {isLoading ? (
-          <p>Loading prompt...</p>
-        ) : (
-          <textarea
-            value={basePrompt}
-            onChange={handlePromptChange}
-            rows="10"
-            placeholder="Enter MOMi's base system prompt here..."
-            disabled={isSaving}
-          />
-        )}
-        {error && <p className="error-message settings-error">{error}</p>}
-        {notification && <p className="success-message settings-success">{notification}</p>}
-        <div className="form-actions">
-          <button type="submit" disabled={isSaving || isLoading || basePrompt === initialPrompt} className="save-button">
-            {isSaving ? 'Saving...' : 'Save Prompt'}
-          </button>
-          <button type="button" onClick={handleReset} disabled={isSaving || isLoading || basePrompt === initialPrompt} className="reset-button">
-            Reset Changes
-          </button>
+    <div className="system-settings-container"> {/* Consistent container name */}
+      <h1 className="page-header">System Settings</h1>
+
+      {notification.message && (
+        <div className={`${notification.type === 'info' ? 'info' : notification.type === 'success' ? 'success' : 'error'}-message`}>
+          {notification.message}
         </div>
-      </form>
-      {/* Future settings can be added here */}
+      )}
+
+      <div className="card"> {/* Wrap form in a card */}
+        <div className="card-header">MOMi Base System Prompt</div>
+        <form onSubmit={handleSubmit} style={{ paddingTop: '15px' }}>
+          <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
+            This prompt guides MOMi's core personality, instructions, and empathetic tone. Edit with care.
+          </p>
+          {isLoading ? (
+            <div className="loading-prompt-placeholder">
+                <p>Loading prompt...</p>
+                <div className="spinner"></div> {/* Optional: Add a CSS spinner */}
+            </div>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="momiBasePrompt" style={{ display: 'none' }}>MOMi Base Prompt</label> {/* Hidden label for accessibility */}
+              <textarea
+                id="momiBasePrompt"
+                value={basePrompt}
+                onChange={handlePromptChange}
+                rows="15" /* Increased rows */
+                placeholder="Enter MOMi's base system prompt here..."
+                disabled={isSaving}
+                className="base-prompt-textarea"
+              />
+            </div>
+          )}
+          
+          <div className="form-actions">
+            <button type="submit" disabled={isSaving || isLoading || !hasChanges} className="button">
+              {isSaving ? 'Saving...' : 'Save Prompt'}
+            </button>
+            <button type="button" onClick={handleReset} disabled={isSaving || isLoading || !hasChanges} className="button secondary">
+              Reset Changes
+            </button>
+          </div>
+        </form>
+      </div>
+      {/* Future settings could be additional cards */}
     </div>
   );
 };

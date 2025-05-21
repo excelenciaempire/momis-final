@@ -12,16 +12,22 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null); // Can be registered user or guest object
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [notification, setNotification] = useState({ type: '', message: '' });
 
   const getToken = async () => {
-    const session = (await supabase.auth.getSession()).data.session;
-    if (!session) throw new Error('Not authenticated');
+    const sessionData = await supabase.auth.getSession();
+    const session = sessionData?.data?.session;
+    if (!session) throw new Error('Not authenticated. Please log in.');
     return session.access_token;
   };
 
+  const handleFetchError = (err, defaultMessage) => {
+    console.error(defaultMessage, err);
+    setNotification({ type: 'error', message: err.response?.data?.error || err.message || defaultMessage });
+  };
+
   const fetchRegisteredUsers = useCallback(async () => {
-    setIsLoading(true); setError('');
+    setIsLoading(true); setNotification({ type: '', message: '' });
     try {
       const token = await getToken();
       const response = await axios.get('/api/admin/users/registered', {
@@ -29,13 +35,13 @@ const UserManagementPage = () => {
       });
       setUsers(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to load registered users.');
+      handleFetchError(err, 'Failed to load registered users.');
     }
     setIsLoading(false);
   }, []);
 
   const fetchGuestUsers = useCallback(async () => {
-    setIsLoading(true); setError('');
+    setIsLoading(true); setNotification({ type: '', message: '' });
     try {
       const token = await getToken();
       const response = await axios.get('/api/admin/users/guests', {
@@ -43,7 +49,7 @@ const UserManagementPage = () => {
       });
       setGuests(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to load guest users.');
+      handleFetchError(err, 'Failed to load guest users.');
     }
     setIsLoading(false);
   }, []);
@@ -65,7 +71,7 @@ const UserManagementPage = () => {
     setSelectedUser({ ...user, type }); // type is 'registered' or 'guest'
     setSelectedConversation(null);
     setMessages([]);
-    setIsLoading(true); setError('');
+    setIsLoading(true); setNotification({ type: '', message: '' });
     let conversationUrl = '';
     if (type === 'registered') {
         conversationUrl = `/api/admin/users/${user.id}/conversations`;
@@ -80,7 +86,7 @@ const UserManagementPage = () => {
         });
         setConversations(response.data || []);
     } catch (err) {
-        setError(err.response?.data?.error || err.message || 'Failed to load conversations.');
+        handleFetchError(err, 'Failed to load conversations.');
         setConversations([]);
     }
     setIsLoading(false);
@@ -88,7 +94,7 @@ const UserManagementPage = () => {
 
   const handleConversationSelect = async (conversation) => {
     setSelectedConversation(conversation);
-    setIsLoading(true); setError('');
+    setIsLoading(true); setNotification({ type: '', message: '' });
     try {
         const token = await getToken();
         const response = await axios.get(`/api/admin/conversations/${conversation.id}/messages`, {
@@ -96,83 +102,93 @@ const UserManagementPage = () => {
         });
         setMessages(response.data || []);
     } catch (err) {
-        setError(err.response?.data?.error || err.message || 'Failed to load messages.');
+        handleFetchError(err, 'Failed to load messages.');
         setMessages([]);
     }
     setIsLoading(false);
   };
 
-  return (
-    <div className="user-management-page">
-      <h2>User and Conversation Management</h2>
+  const renderUserItem = (user, type) => (
+    <li key={user.id} onClick={() => handleUserSelect(user, type)} className={`list-item ${selectedUser?.id === user.id && selectedUser?.type === type ? 'selected' : ''}`}>
+      {type === 'registered' ? (user.email || `User ID: ${user.id.substring(0,8)}...`) : `Guest ID: ${user.id.substring(0,8)}...`}
+      <span className="date-info">(Created: {new Date(user.created_at).toLocaleDateString()})</span>
+    </li>
+  );
 
-      <div className="tabs">
+  const renderConversationItem = (conv) => (
+    <li key={conv.id} onClick={() => handleConversationSelect(conv)} className={`list-item ${selectedConversation?.id === conv.id ? 'selected' : ''}`}>
+      Conv. ID: {conv.id.substring(0,8)}...
+      <span className="date-info">(Created: {new Date(conv.created_at).toLocaleString()})</span>
+      {/* TODO: Add conversation summary if available from backend */}
+      {/* {conv.summary && <p className="summary-preview">{conv.summary.substring(0,50)}...</p>} */}
+    </li>
+  );
+
+  return (
+    <div className="user-management-container">
+      <h1 className="page-header">User and Conversation Management</h1>
+
+      <div className="tabs-container mb-2">
         <button 
-          className={`tab-button ${activeTab === 'registered' ? 'active' : ''}`}
+          className={`button ${activeTab === 'registered' ? 'primary' : 'secondary'}`}
           onClick={() => setActiveTab('registered')}
         >
           Registered Users
         </button>
         <button 
-          className={`tab-button ${activeTab === 'guests' ? 'active' : ''}`}
+          className={`button ml-1 ${activeTab === 'guests' ? 'primary' : 'secondary'}`}
           onClick={() => setActiveTab('guests')}
         >
           Guest Users
         </button>
       </div>
 
-      {error && <p className="error-message">{error}</p>}
+      {notification.message && (
+        <div className={`${notification.type}-message card mb-2`}>{notification.message}</div>
+      )}
 
-      <div className="content-area">
-        <div className="list-panel users-list">
-          <h3>{activeTab === 'registered' ? 'Registered Users' : 'Guest Users'}</h3>
-          {isLoading && !selectedUser && <p>Loading users...</p>}
-          {(activeTab === 'registered' && users.length === 0 && !isLoading) && <p>No registered users found.</p>}
-          {(activeTab === 'guests' && guests.length === 0 && !isLoading) && <p>No guest users found.</p>}
-          <ul>
-            {activeTab === 'registered' && users.map(user => (
-              <li key={user.id} onClick={() => handleUserSelect(user, 'registered')} className={selectedUser?.id === user.id && selectedUser?.type === 'registered' ? 'selected' : ''}>
-                {user.email || `User ID: ${user.id.substring(0,8)}...`} (Registered: {new Date(user.created_at).toLocaleDateString()})
-              </li>
-            ))}
-            {activeTab === 'guests' && guests.map(guest => (
-              <li key={guest.id} onClick={() => handleUserSelect(guest, 'guest')} className={selectedUser?.id === guest.id && selectedUser?.type === 'guest' ? 'selected' : ''}>
-                Guest ID: {guest.id.substring(0,8)}... (Created: {new Date(guest.created_at).toLocaleDateString()})
-              </li>
-            ))}
+      <div className="panels-grid">
+        <div className="card list-panel">
+          <div className="card-header">{activeTab === 'registered' ? 'Registered Users' : 'Guest Users'}</div>
+          {(isLoading && !selectedUser && users.length === 0 && guests.length === 0) && <p className="loading-text">Loading users...</p>}
+          {(activeTab === 'registered' && users.length === 0 && !isLoading) && <p className="empty-text">No registered users found.</p>}
+          {(activeTab === 'guests' && guests.length === 0 && !isLoading) && <p className="empty-text">No guest users found.</p>}
+          <ul className="item-list">
+            {activeTab === 'registered' && users.map(user => renderUserItem(user, 'registered'))}
+            {activeTab === 'guests' && guests.map(guest => renderUserItem(guest, 'guest'))}
           </ul>
         </div>
 
         {selectedUser && (
-          <div className="list-panel conversations-list">
-            <h3>Conversations for {selectedUser.type === 'registered' ? (selectedUser.email || selectedUser.id.substring(0,8)) : `Guest ${selectedUser.id.substring(0,8)}...`}</h3>
-            {isLoading && conversations.length === 0 && !selectedConversation && <p>Loading conversations...</p>}
-            {!isLoading && conversations.length === 0 && <p>No conversations found for this user.</p>}
-            <ul>
-              {conversations.map(conv => (
-                <li key={conv.id} onClick={() => handleConversationSelect(conv)} className={selectedConversation?.id === conv.id ? 'selected' : ''}>
-                  Conv. ID: {conv.id.substring(0,8)}... (Created: {new Date(conv.created_at).toLocaleString()})
-                  {conv.summary && <p className="summary-preview">Summary: {conv.summary.substring(0,50)}...</p>}
-                </li>
-              ))}
+          <div className="card list-panel">
+            <div className="card-header">Conversations for {selectedUser.type === 'registered' ? (selectedUser.email || selectedUser.id.substring(0,8)) : `Guest ${selectedUser.id.substring(0,8)}...`}</div>
+            {(isLoading && conversations.length === 0 && !selectedConversation) && <p className="loading-text">Loading conversations...</p>}
+            {!isLoading && conversations.length === 0 && <p className="empty-text">No conversations found.</p>}
+            <ul className="item-list">
+              {conversations.map(conv => renderConversationItem(conv))}
             </ul>
           </div>
         )}
 
         {selectedConversation && (
-          <div className="messages-panel">
-            <h3>Messages for Conversation ID: {selectedConversation.id.substring(0,8)}...</h3>
-            {isLoading && messages.length === 0 && <p>Loading messages...</p>}
-            {!isLoading && messages.length === 0 && <p>No messages found in this conversation.</p>}
-            <div className="messages-container">
+          <div className="card messages-panel">
+            <div className="card-header">Messages (Conv. ID: {selectedConversation.id.substring(0,8)}...)</div>
+            {(isLoading && messages.length === 0) && <p className="loading-text">Loading messages...</p>}
+            {!isLoading && messages.length === 0 && <p className="empty-text">No messages in this conversation.</p>}
+            <div className="messages-display-area">
               {messages.map(msg => (
-                <div key={msg.id} className={`message-bubble message-${msg.sender_type}`}>
-                  <p><strong>{msg.sender_type === 'momi' ? 'MOMi' : (msg.sender_type === 'system' ? 'System' : 'User')}:</strong></p>
+                <div key={msg.id} className={`message-bubble msg-${msg.sender_type.toLowerCase()}`}>
+                  <p className="sender-label">
+                    <strong>{msg.sender_type === 'momi' ? 'MOMi' : (msg.sender_type === 'system' ? 'System' : 'User')}</strong>
+                  </p>
                   {msg.content_type === 'image_url' ? 
-                    <><img src={msg.content} alt="User upload" style={{maxWidth: '200px', borderRadius: '5px'}} /><p>{msg.metadata?.original_user_prompt || '[Image]'}</p></> : 
-                    <p>{msg.content}</p>
+                    <div className="image-message-content">
+                        <img src={msg.content} alt="User upload" className="message-image" />
+                        {msg.metadata?.original_user_prompt && <p className="image-prompt">{msg.metadata.original_user_prompt}</p>}
+                    </div> : 
+                    <p className="text-content">{msg.content}</p>
                   }
-                  <span className="message-timestamp">{new Date(msg.timestamp).toLocaleString()}</span>
+                  <span className="timestamp">{new Date(msg.timestamp).toLocaleString()}</span>
                 </div>
               ))}
             </div>

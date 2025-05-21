@@ -92,4 +92,109 @@
   margin: 10px auto 20px auto;
   text-align: center;
   max-width: 500px;
-} 
+}
+
+.analytics-page-container {
+    /* Container for the whole page, if specific padding/margin is needed beyond .admin-main-content */
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Responsive grid */
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.summary-item {
+    /* .card styles are applied globally */
+    /* Add any specific styles for summary items if needed */
+    text-align: center; /* Center text within summary cards */
+}
+
+.summary-item .card-header {
+    font-size: 1em; /* Slightly smaller for summary cards */
+    color: var(--text-primary);
+    /* border-bottom: 1px solid var(--gray-light); */
+}
+
+.summary-item .count {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: var(--primary-accent);
+    margin: 10px 0;
+    line-height: 1.2;
+}
+
+.summary-item .trend {
+    font-size: 0.9em;
+    color: var(--gray-dark);
+}
+
+.loading-message p,
+.analytics-error p {
+    /* Styles for loading/error paragraphs if needed, otherwise rely on .card & .error-message */
+    padding: 15px;
+}
+
+.charts-area {
+    /* .card styles are applied globally */
+    /* Add any specific styles for the charts area */
+}
+
+.chart-placeholder {
+    background-color: var(--gray-ultralight);
+    border: 1px dashed var(--border-color);
+    padding: 40px 20px;
+    text-align: center;
+    margin-top: 15px;
+    border-radius: 6px;
+    color: var(--gray-dark);
+}
+
+.feature-notice {
+    /* .card styles are applied globally */
+    /* Custom styles for the notice if needed */
+    /* background-color: var(--purple-light); */
+    /* color: var(--purple-main); */
+}
+
+.feature-notice p {
+    margin: 0;
+}
+
+/* New styles for charts grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+@media (min-width: 992px) { /* For larger screens, two columns */
+    .charts-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.chart-card {
+    /* .card styles are applied globally */
+    padding: 15px; /* Adjust padding if needed for chart container */
+    position: relative; /* For chart responsiveness within card */
+    min-height: 350px; /* Ensure card has enough height for the chart canvas */
+}
+
+/* Remove old .charts-area and .chart-placeholder if no longer used directly */
+/* .charts-area {
+    /* .card styles are applied globally */
+    /* Add any specific styles for the charts area */
+/* }
+
+.chart-placeholder {
+    background-color: var(--gray-ultralight);
+    border: 1px dashed var(--border-color);
+    padding: 40px 20px;
+    text-align: center;
+    margin-top: 15px;
+    border-radius: 6px;
+    color: var(--gray-dark);
+} */ 

@@ -1,3 +1,33 @@
+:root {
+  --purple-main: #913D9A;
+  --magenta-vibrant: #C542C1;
+  --purple-light: #EBC7F2;
+  --gray-medium: #D9D9D9;
+  --white-soft: #FFF8FC;
+  --gray-ultralight: #F9F9F9;
+  --black-opaque: #1F1F1F;
+  --gray-dark: #333333;
+  --gray-light: #CCCCCC;
+
+  /* Semantic Colors */
+  --primary-accent: var(--purple-main);
+  --secondary-accent: var(--magenta-vibrant);
+  --background-main: var(--gray-ultralight);
+  --background-content: var(--white-soft);
+  --text-primary: var(--gray-dark);
+  --text-secondary: var(--black-opaque); /* For darker backgrounds */
+  --text-on-accent: var(--white-soft);
+  --nav-background: var(--black-opaque);
+  --nav-text: var(--purple-light);
+  --nav-text-hover: var(--white-soft);
+  --nav-background-hover: var(--purple-main);
+  --button-primary-bg: var(--purple-main);
+  --button-primary-text: var(--white-soft);
+  --button-secondary-bg: var(--magenta-vibrant);
+  --button-secondary-text: var(--white-soft);
+  --border-color: var(--gray-light);
+}
+
 /* Global styles can go here */
 body {
   margin: 0;

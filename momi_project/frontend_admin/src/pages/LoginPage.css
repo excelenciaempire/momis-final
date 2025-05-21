@@ -1,36 +1,34 @@
 .login-page-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background-color: var(--purple-light, #EBC7F2); /* Fallback color */
+  min-height: 100vh; /* Full viewport height */
   padding: 20px;
+  background-color: var(--background-main); /* Ensure background matches admin theme */
 }
 
-.login-form {
-  background-color: var(--white-soft, #FFF8FC);
-  padding: 30px 40px;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+.login-card {
   width: 100%;
-  max-width: 400px;
-  text-align: center;
+  max-width: 400px; /* Max width for the login form */
+  /* Card styling (padding, shadow, border-radius) is now from App.css .card */
 }
 
-.login-form h2 {
-  color: var(--purple-main, #913D9A);
-  margin-bottom: 25px;
+/* 
+  Most form and button styling is now global (App.css).
+  Specific overrides or layout adjustments for the login form can remain here if needed.
+  For example, if the h2 inside the login card needs different margin than global .page-header.
+*/
+
+.login-card .page-header {
+  margin-bottom: 25px; /* Adjust if needed, global is 25px */
+  /* No border needed for login title, global page-header has one */
+  border-bottom: none; 
+  padding-bottom: 0;
 }
 
-.login-button {
-  background-color: var(--purple-main, #913D9A);
-  color: var(--white-soft, #FFF8FC);
+/* Keep this if the login button has specific styling not covered by .button */
+/* .login-button {
   width: 100%;
-  padding: 12px;
-  font-size: 1.1em;
-  margin-top: 10px;
-}
-
-.login-button:hover {
-  opacity: 0.85;
-} 
+  margin-top: 10px; 
+} */ 
