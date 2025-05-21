@@ -3,23 +3,34 @@ modules = ["nodejs-20"]
 channel = "stable-24_05"
 
 language = "nix"
-run = "cd momi_project/backend && npm start"
 
-[workflows]
-runButton = "Run"
+# Main entrypoint for your application. Replit uses this to understand your project.
+entrypoint = "momi_project/backend/index.js"
 
-[[workflows.workflow]]
-name = "Run"
-author = 41873379
-mode = "sequential"
+# Specifies how to install packages.
+[packager]
+[packager.features]
+packageSearch = true
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd momi_project/backend && npm start"
+# Environment variables.
+[env]
+PORT = "3001" # Your backend listens on this port; Replit maps it for web access.
+
+# Command to build your project for deployment.
+# This will run before the 'run' command during a deployment.
+[build]
+command = "cd momi_project/backend && npm install && npm run build"
+
+# Command to run your application (used by both "Run" button and deployments).
+[run]
+command = "cd momi_project/backend && node index.js"
 
 [[ports]]
 localPort = 3001
 externalPort = 80
 
+# Deployment configuration.
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+buildCommand = "cd momi_project/backend && npm install && npm run build"
+runCommand = "cd momi_project/backend && node index.js"
