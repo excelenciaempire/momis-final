@@ -82,22 +82,29 @@ const AnalyticsPage = () => {
   const fetchData = useCallback(async () => {
     setIsLoading({ summary: true, charts: true });
     setError('');
+    let token = null;
     try {
       const sessionData = await supabase.auth.getSession();
       const session = sessionData?.data?.session;
-      if (!session) throw new Error('Not authenticated. Please log in.');
-      const token = session.access_token;
+      // if (!session) throw new Error('Not authenticated. Please log in.'); // Allow proceeding for preview
+      if (session) {
+        token = session.access_token;
+      } else {
+        console.warn("AnalyticsPage: No active session, proceeding for preview. API calls may fail if auth is enforced by backend.");
+        // For local preview without backend auth, you might use a placeholder or skip auth headers.
+        // If backend authAdmin middleware is truly bypassed, null token might be fine or backend might not care.
+      }
 
       // Fetch Summary Data
       const summaryRes = await axios.get('/api/admin/analytics/summary', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setSummaryData(summaryRes.data);
       setIsLoading(prev => ({ ...prev, summary: false }));
 
       // Fetch Messages Over Time Data (e.g., last 30 days)
       const messagesRes = await axios.get('/api/admin/analytics/messages-over-time?period=30d', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const messagesData = messagesRes.data.map(item => ({ x: new Date(item.date), y: item.count }));
       setMessagesChartData({
@@ -114,7 +121,7 @@ const AnalyticsPage = () => {
 
       // Fetch Daily Active Users Data
       const activeUsersRes = await axios.get('/api/admin/analytics/daily-active-users?period=30d', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const activeUsersData = activeUsersRes.data.map(item => ({ x: new Date(item.date), y: item.count }));
       setActiveUsersChartData({
@@ -133,9 +140,13 @@ const AnalyticsPage = () => {
     } catch (err) {
       console.error('Error fetching analytics data:', err);
       const errMsg = err.response?.data?.error || err.message || 'Failed to load analytics data.';
-      setError(errMsg);
-      setIsLoading({ summary: false, charts: false }); // Stop loading on error for all parts
-      // Optionally set summary to error state
+      // If the error is due to auth and we are in preview mode, customize message
+      if (!token && (err.response?.status === 401 || err.response?.status === 403)) {
+        setError("Preview mode: Could not fetch data. Backend authentication might still be active.");
+      } else {
+        setError(errMsg);
+      }
+      setIsLoading({ summary: false, charts: false });
       setSummaryData({
         totalRegisteredUsers: 'Err',
         totalGuestUsers: 'Err',
@@ -194,9 +205,9 @@ const AnalyticsPage = () => {
         </div>
       </div>
 
-      <div className="card feature-notice mt-2"> {/* Wrap notice in a card */}
+      {/* <div className="card feature-notice mt-2"> 
         <p><strong>Note:</strong> This is a placeholder for the analytics dashboard. Real data and interactive charts will be implemented in a future update.</p>
-      </div>
+      </div> */}
     </div>
   );
 };
