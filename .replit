@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "web", "nix"]
 [nix]
 channel = "stable-24_05"
 
@@ -36,3 +36,17 @@ deploymentTarget = "autoscale"
 # buildCommand = "cd momi_project/backend && npm install && npm run build" # Full build
 buildCommand = "cd momi_project/backend && npm install" # Simplified build for deployment
 runCommand = "cd momi_project/backend && node index.js"
+run = ["sh", "-c", "cd momi_project/backend && node index.js"]
+build = ["sh", "-c", "cd momi_project/backend && npm install && npm run build"]
+
+[workflows]
+runButton = "Build and Run"
+
+[[workflows.workflow]]
+name = "Build and Run"
+author = 41873379
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd momi_project/backend && npm install && npm run build && node index.js"
