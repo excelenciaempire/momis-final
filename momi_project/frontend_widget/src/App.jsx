@@ -13,11 +13,8 @@ function App() {
   const [conversationId, setConversationId] = useState(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState(null); // ID from public.users table
 
-  // Heart icon SVG (replace with your actual SVG)
-  const HeartIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M27.9999 45.416C27.0199 45.416 26.0399 45.226 25.1199 44.846C20.0199 42.476 15.7299 38.896 12.2499 34.116C8.77991 29.346 7.46991 24.036 8.31991 18.806C9.16991 13.586 12.0999 9.04603 16.5199 6.14603C20.9399 3.25603 26.1199 2.43603 31.2199 3.86603C36.3199 5.28603 40.7499 8.82603 43.3999 13.696C46.0499 18.566 46.6499 24.286 45.0499 29.696C43.4499 35.096 39.7399 39.756 34.8599 42.746C32.9699 43.866 30.7299 44.726 28.5599 45.166C28.3699 45.316 28.1799 45.366 27.9999 45.416Z" fill="#E39DFA"/>
-    </svg>
+  const ToggleIcon = () => (
+    <img src="/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
   );
   
   useEffect(() => {
@@ -217,7 +214,7 @@ function App() {
     <div className={`chat-widget-container ${isChatOpen ? 'open' : 'closed'}`}>
       {!isChatOpen && (
         <button className="chat-toggle-button" onClick={toggleChatOpen} aria-label={'Open chat with MOMi'}>
-          <HeartIcon />
+          <ToggleIcon />
         </button>
       )}
       {isChatOpen && (
