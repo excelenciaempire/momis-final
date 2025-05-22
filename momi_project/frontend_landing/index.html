@@ -25,6 +25,7 @@
             script.src = 'https://momis-app.replit.app/widget/assets/index.js';
             script.async = true;
             script.crossOrigin = 'anonymous';
+            script.type = 'module';
             script.onload = () => { console.log('MOMi widget script loaded.'); };
             script.onerror = (e) => { console.error('MOMi widget script failed to load:', e); };
             document.body.appendChild(script);
