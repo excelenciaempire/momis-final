@@ -1,39 +1,46 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOMi - Preview</title>
+    <title>MOMi - Join Our Mission</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; text-align: center; }
-        .nav-links a { margin: 0 15px; font-size: 1.2em; text-decoration: none; color: var(--purple-main); padding: 10px 15px; border: 1px solid var(--purple-light); border-radius: 5px; transition: background-color 0.3s, color 0.3s; }
-        .nav-links a:hover { background-color: var(--purple-light); color: var(--purple-main); }
-        .logo { margin-bottom: 30px; }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
-        <div class="logo">MOMi</div>
-        <nav class="nav-links">
-            <a href="/">Chat Widget Preview</a>
-            <a href="/admin/">Admin Dashboard Preview</a>
+        <div class="logo">
+            <img src="../momi-icon-2.png" alt="MOMi Logo">
+        </div>
+        <nav>
+            <a href="#" class="active">Home</a>
+            <a href="#">About Us</a>
+            <a href="#">Sign Up</a>
+            <a href="#">Log In</a>
         </nav>
     </header>
 
     <main>
         <section class="hero">
             <div class="hero-content">
-                <h1>MOMi Preview</h1>
-                <p>Use the links above to preview the Chat Widget or the Admin Dashboard.</p>
+                <h1>Join Our Mission to Thrive</h1>
+                <p>Step into a vibrant community of moms and meet MOMi, your 24/7 AI wellness assistant. Get real-life parenting support, personalized guidance, and tools for a healthier family journey. Feel empowered, not overwhelmed.</p>
+                <button class="join-button">Join Our Tribe</button>
             </div>
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1536337005238-94b997371b40?auto=format&fit=crop&w=500" alt="Community of Support">
+            </div>
+        </section>
+
+        <section class="mission">
+            <h2>Our Mission</h2>
+            <p>We are a community of women committed to healthy, non-toxic living for ourselves and future generations. Our mission is to raise centered, flourishing children who can shape a better world. We value family health, authentic connection, intergenerational wisdom, and a safe, supportive space to grow together. We believe we are stronger together.</p>
         </section>
     </main>
 
-    <footer>
-        <p>&copy; 2024 MOMi Project.</p>
-    </footer>
+    <!-- MOMi Chat Widget Container -->
+    <div id="momi-chat-widget-container"></div>
 
     <!-- MOMi Chat Widget Loader Script -->
     <script>
@@ -46,7 +53,7 @@
                 document.body.appendChild(container);
             }
             const script = document.createElement('script');
-            script.src = '/widget/assets/index.js'; 
+            script.src = '/widget/assets/index.js';
             script.async = true;
             script.onload = () => { console.log('MOMi widget script loaded.'); };
             script.onerror = () => { console.error('MOMi widget script failed to load.'); };
@@ -54,4 +61,4 @@
         })();
     </script>
 </body>
-</html> 
+</html>
