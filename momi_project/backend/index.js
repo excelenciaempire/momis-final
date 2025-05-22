@@ -17,11 +17,9 @@ const port = process.env.PORT || 3001;
 // --- CORS Configuration ---
 // Define allowed origins
 const allowedOrigins = [
-  'https://7pillarsmission.com', 
-  // You can add other origins here if needed, e.g., for local development
-  // 'http://localhost:3000', 'http://127.0.0.1:5173' 
-  // For Replit previews, Replit usually handles this, but if you have a custom dev setup:
-  // /.*\.replit\.dev$/ // Regex to allow all replit.dev subdomains (be careful with this)
+  'https://7pillarsmission.com',
+  /.*\.replit\.dev$/,
+  /.*\.repl\.co$/
 ];
 
 const corsOptions = {
