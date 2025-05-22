@@ -1,0 +1,18 @@
+{
+  "name": "momi-project-runner",
+  "version": "1.0.0",
+  "description": "Runner for MOMi project components",
+  "main": "index.js",
+  "scripts": {
+    "dev:backend": "npm start --prefix backend",
+    "dev:widget": "npm run dev --prefix frontend_widget",
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:widget\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

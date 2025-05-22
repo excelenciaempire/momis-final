@@ -46,12 +46,3 @@ author = 41873379
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd momi_project/backend && npm install && node index.js"
-
-[[workflows.workflow]]
-name = "Start Server"
-author = 41873379
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd momi_project/backend && npm install && node index.js"
