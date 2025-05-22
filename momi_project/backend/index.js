@@ -9,9 +9,49 @@ const fs = require('fs'); // Needed for OpenAI SDK to read file from path for Wh
 const pdf = require('pdf-parse'); // For PDF text extraction
 const authAdmin = require('./middleware/authAdmin'); // Import admin auth middleware
 const axios = require('axios'); // Added for image URL to Data URI conversion
+const cors = require('cors'); // <-- ADD THIS LINE
 
 const app = express();
 const port = process.env.PORT || 3001;
+
+// --- CORS Configuration ---
+// Define allowed origins
+const allowedOrigins = [
+  'https://7pillarsmission.com', 
+  // You can add other origins here if needed, e.g., for local development
+  // 'http://localhost:3000', 'http://127.0.0.1:5173' 
+  // For Replit previews, Replit usually handles this, but if you have a custom dev setup:
+  // /.*\.replit\.dev$/ // Regex to allow all replit.dev subdomains (be careful with this)
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    })) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // If your frontend needs to send cookies or authorization headers
+  // methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
+  // allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Specify allowed headers
+};
+
+// Enable CORS for all routes initially. You can also apply it selectively.
+app.use(cors(corsOptions));
+// If you want to be more specific and only apply CORS to the /widget path:
+// app.use('/widget', cors(corsOptions), express.static(widgetDistPath));
+// However, your API routes (/api/*) will also need CORS if called cross-origin.
+// So, applying it globally like above is often simpler if the widget and API are on the same backend.
 
 // --- Middleware for serving static frontend files ---
 
