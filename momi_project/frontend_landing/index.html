@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,17 +8,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header>
-        <div class="logo">
-            <img src="../momi-icon-2.png" alt="MOMi Logo">
-        </div>
-        <nav>
-            <a href="#" class="active">Home</a>
-            <a href="#">About Us</a>
-            <a href="#">Sign Up</a>
-            <a href="#">Log In</a>
-        </nav>
-    </header>
+    <!-- MOMi Chat Widget Container -->
+    <div id="momi-chat-widget-container"></div>
+
+    <!-- MOMi Chat Widget Script -->
+    <script>
+        window.addEventListener('load', function() {
+            const WIDGET_CONTAINER_ID = 'momi-chat-widget-container';
+            let container = document.getElementById(WIDGET_CONTAINER_ID);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = WIDGET_CONTAINER_ID;
+                document.body.appendChild(container);
+            }
+            const script = document.createElement('script');
+            script.src = 'https://momis-app.replit.app/widget/assets/index.js';
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.onload = () => { console.log('MOMi widget script loaded.'); };
+            script.onerror = (e) => { console.error('MOMi widget script failed to load:', e); };
+            document.body.appendChild(script);
+        });
+    </script>
 
     <main>
         <section class="hero">
@@ -38,27 +48,5 @@
             <p>We are a community of women committed to healthy, non-toxic living for ourselves and future generations. Our mission is to raise centered, flourishing children who can shape a better world. We value family health, authentic connection, intergenerational wisdom, and a safe, supportive space to grow together. We believe we are stronger together.</p>
         </section>
     </main>
-
-    <!-- MOMi Chat Widget Container -->
-    <div id="momi-chat-widget-container"></div>
-
-    <!-- MOMi Chat Widget Loader Script -->
-    <script>
-        (function() {
-            const WIDGET_CONTAINER_ID = 'momi-chat-widget-container';
-            let container = document.getElementById(WIDGET_CONTAINER_ID);
-            if (!container) {
-                container = document.createElement('div');
-                container.id = WIDGET_CONTAINER_ID;
-                document.body.appendChild(container);
-            }
-            const script = document.createElement('script');
-            script.src = 'https://momis-app.replit.app/widget/assets/index.js';
-            script.async = true;
-            script.onload = () => { console.log('MOMi widget script loaded.'); };
-            script.onerror = () => { console.error('MOMi widget script failed to load.'); };
-            document.body.appendChild(script);
-        })();
-    </script>
 </body>
 </html>
