@@ -14,7 +14,7 @@ function App() {
   const [currentUserProfileId, setCurrentUserProfileId] = useState(null); // ID from public.users table
 
   const ToggleIcon = () => (
-    <img src="/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
+    <img src="/widget/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
   );
   
   useEffect(() => {
