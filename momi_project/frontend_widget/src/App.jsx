@@ -13,6 +13,13 @@ function App() {
   const [conversationId, setConversationId] = useState(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState(null); // ID from public.users table
 
+  // Heart icon SVG (replace with your actual SVG)
+  const HeartIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M27.9999 45.416C27.0199 45.416 26.0399 45.226 25.1199 44.846C20.0199 42.476 15.7299 38.896 12.2499 34.116C8.77991 29.346 7.46991 24.036 8.31991 18.806C9.16991 13.586 12.0999 9.04603 16.5199 6.14603C20.9399 3.25603 26.1199 2.43603 31.2199 3.86603C36.3199 5.28603 40.7499 8.82603 43.3999 13.696C46.0499 18.566 46.6499 24.286 45.0499 29.696C43.4499 35.096 39.7399 39.756 34.8599 42.746C32.9699 43.866 30.7299 44.726 28.5599 45.166C28.3699 45.316 28.1799 45.366 27.9999 45.416Z" fill="#E39DFA"/>
+    </svg>
+  );
+  
   useEffect(() => {
     setLoading(true);
     supabase?.auth.getSession().then(async ({ data: { session } }) => {
@@ -208,24 +215,25 @@ function App() {
 
   return (
     <div className={`chat-widget-container ${isChatOpen ? 'open' : 'closed'}`}>
-      <button className="chat-toggle-button" onClick={toggleChatOpen} aria-label={isChatOpen ? 'Close chat' : 'Open chat with MOMi'}>
-        {isChatOpen ? 
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 
-          : 
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        }
-      </button>
+      {!isChatOpen && (
+        <button className="chat-toggle-button" onClick={toggleChatOpen} aria-label={'Open chat with MOMi'}>
+          <HeartIcon />
+        </button>
+      )}
       {isChatOpen && (
-        <div className="chat-window-wrapper">
-          <ChatWindow 
-            conversationId={conversationId}
-            setConversationId={setConversationId}
-            userId={currentUserProfileId}
-            guestUserId={guestSession?.guestUserId}
-            sessionToken={guestSession?.sessionToken}
-            toggleChatOpen={toggleChatOpen}
-          />
-        </div>
+        <>
+          <div className="chat-overlay" onClick={toggleChatOpen}></div>
+          <div className="chat-window-wrapper">
+            <ChatWindow
+              conversationId={conversationId}
+              setConversationId={setConversationId}
+              userId={currentUserProfileId}
+              guestUserId={guestSession?.guestUserId}
+              sessionToken={guestSession?.sessionToken}
+              toggleChatOpen={toggleChatOpen} // Pass this to ChatWindow for its own close button
+            />
+          </div>
+        </>
       )}
     </div>
   );

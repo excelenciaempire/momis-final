@@ -1,5 +1,7 @@
 :root {
   /* ... existing color variables ... */
+  --momi-brand-purple: #9C27B0; /* As per spec for header */
+  --momi-purple-button: #E39DFA; /* As per spec for floating button */
   --momi-purple-vibrant: #8E24AA;
   --momi-white: #FFFFFF;
   --momi-gray-background: #F5F5F5;
@@ -7,112 +9,151 @@
   --momi-text-dark: #333333;
   --momi-text-light: #FFFFFF;
   --momi-border-gray: #DDDDDD;
+  --momi-overlay-background: rgba(0,0,0,0.4);
   --momi-font-sans-serif: 'Poppins', system-ui, Avenir, Helvetica, Arial, sans-serif;
 
-  --chat-widget-width: 350px; /* Slightly narrower */
-  --chat-widget-max-height: 500px; /* Adjusted max height */
-  --chat-widget-header-height: 50px;
-  --chat-widget-input-height: 60px;
+  /* Dimensions */
+  --chat-widget-toggle-button-size: 56px;
+  --chat-widget-desktop-width: 400px;
+  --chat-widget-desktop-height: 650px;
+  --chat-widget-desktop-radius: 12px;
+  --chat-widget-offset: 16px;
+
+  --chat-widget-mobile-width: 90vw;
+  --chat-widget-mobile-height: 80vh;
+  --chat-widget-mobile-radius: 8px;
+  --chat-widget-mobile-bottom-margin: 8px; /* Can be 8-16px */
 }
 
-/* Base styling for the widget can go here or in index.css */
-.chat-widget-container.open .chat-window-wrapper {
-  /* Desktop styles */
-  width: 400px;
-  height: 650px;
-  max-width: 95vw;
-  max-height: 90vh;
-  border-radius: 8px; /* Updated border-radius */
+.chat-widget-container {
+  position: fixed;
+  z-index: 9999; /* Ensure it's on top */
+}
 
+.chat-toggle-button {
+  position: fixed;
+  bottom: var(--chat-widget-offset);
+  right: var(--chat-widget-offset);
+  width: var(--chat-widget-toggle-button-size);
+  height: var(--chat-widget-toggle-button-size);
+  background-color: var(--momi-purple-button);
+  color: var(--momi-white); /* For the SVG icon */
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 10000; /* Above overlay when chat is closed */
+}
+
+.chat-toggle-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+.chat-toggle-button svg {
+  width: 28px; /* Adjust icon size as needed */
+  height: 28px;
+}
+
+/* Overlay for when chat is open */
+.chat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--momi-overlay-background);
+  z-index: 10001; /* Below chat window, above page content */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.chat-widget-container.open .chat-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Chat Window Wrapper Styling */
+.chat-window-wrapper {
+  position: fixed;
   background-color: var(--momi-white);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* Enhanced shadow */
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--momi-border-gray);
+  /* border: 1px solid var(--momi-border-gray); remove if not desired with new design */
+  z-index: 10002; /* Above overlay */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(100%); /* Start from below */
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), visibility 0.3s ease;
+}
+
+.chat-widget-container.open .chat-window-wrapper {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  /* Desktop styles */
+  width: var(--chat-widget-desktop-width);
+  height: var(--chat-widget-desktop-height);
+  max-width: 95vw;
+  max-height: 90vh;
+  border-radius: var(--chat-widget-desktop-radius);
+  bottom: var(--chat-widget-offset);
+  right: var(--chat-widget-offset);
 }
 
 /* Mobile styles */
 @media (max-width: 767px) {
   .chat-widget-container.open .chat-window-wrapper {
-    width: 90vw;
-    height: 80vh;
-    /* max-width and max-height from desktop can still apply or be overridden if needed */
-    /* border-radius is already 8px from above */
+    width: var(--chat-widget-mobile-width);
+    height: var(--chat-widget-mobile-height);
+    border-radius: var(--chat-widget-mobile-radius);
+    bottom: var(--chat-widget-mobile-bottom-margin);
+    right: 50%; 
+    left: auto; 
+    transform: translate(50%, 0); /* Centering and final position for open state */
+    margin-left: auto; 
+    margin-right: auto;
   }
+  /* All other general .chat-window-wrapper rules for mobile (when closed) are removed from this media query.
+     The global .chat-window-wrapper rule handles the initial closed state (opacity:0, transform: translateY(100%)). */
 }
 
-.chat-widget-container.closed .chat-window-wrapper {
-  opacity: 0;
-  transform: translateY(20px);
-  height: 0;
-  width: 0;
-  overflow: hidden;
-}
-
-.chat-toggle-button {
-  background-color: var(--momi-purple-vibrant);
-  color: var(--momi-white);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%; /* Circular button */
-  border: none;
-  font-size: 1.5em; /* For an icon, adjust as needed */
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  /* Placeholder for an icon - we can use text or an SVG later */
-}
-
-.chat-toggle-button:hover {
-  background-color: #7B1FA2; /* Slightly darker purple on hover */
-  transform: scale(1.05);
-}
-
+/* Hide the main toggle button when chat is open (handled by JS conditional rendering, but good fallback) */
 .chat-widget-container.open .chat-toggle-button {
-  /* Optionally style the button differently when chat is open, e.g., change icon */
-   background-color: #A13ABF; /* Lighter purple when open to indicate active state */
+  display: none; 
 }
 
+/* Remove styles that are no longer needed or might conflict */
+.chat-widget-container.closed .chat-window-wrapper {
+  /* These are now handled by the default state of .chat-window-wrapper */
+  /* opacity: 0; */
+  /* transform: translateY(20px); */
+  /* height: 0; */
+  /* width: 0; */
+  /* overflow: hidden; */
+}
 
-/* Styles from original App.css that are not directly widget UI related */
-/* Consider moving these or ensuring they don't conflict if #root is also used by landing page */
-/* For now, assume #root in widget context is specific to the widget container */
+/* Cleanup old styles from App.css */
 #root {
-  /* max-width: 1280px; */ /* Remove if widget has its own fixed width */
-  /* margin: 0 auto; */
-  /* padding: 2rem; */
-  /* text-align: center; */
+  /* Keep if other parts of a potential landing page use it, otherwise widget is self-contained */
 }
 
-/* Remove or adapt Vite default styles below if they are not desired for the widget */
-.logo {
-  /* ... keep if used by an error/loading page within widget, otherwise remove ... */
+.logo, .card, .read-the-docs {
+  /* Remove if not used by the widget or its loading/error states */
+  display: none; 
 }
 
-@keyframes logo-spin { /* ... remove if logo and its spin are not used ... */ }
-
-.card {
-  /* padding: 2em; */ /* Likely not needed for widget internal styling */
-}
-
-.read-the-docs {
-  /* color: #888; */ /* Likely not needed */
-}
-
-/* Specific old layout styles - these should generally be removed or live in ChatWindow.css if part of its direct structure */
 .app-container, .app-header, .auth-buttons, .app-footer {
-    /* These were for a full-page app concept. Remove if not adapted for widget components. */
-    display: none; /* Hiding them by default to avoid conflict */
+    display: none; 
 }
 
-/* Disclaimer styling - will be part of ChatWindow component's structure */
 .chat-disclaimer {
   background-color: var(--momi-gray-light-accent);
   padding: 8px 12px;
