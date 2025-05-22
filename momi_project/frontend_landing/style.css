@@ -114,3 +114,11 @@ h1 {
         margin-left: 1rem;
     }
 }
+
+/* Widget container styling */
+#momi-chat-widget-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}

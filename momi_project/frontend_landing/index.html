@@ -1,70 +1,47 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOMi - Join Our Mission</title>
+    <title>MOMi Widget Demo</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- MOMi Chat Widget Container -->
     <div id="momi-chat-widget-container"></div>
 
-    <!-- MOMi Chat Widget Script -->
+    <!-- MOMi Widget Integration Script -->
     <script>
-        window.addEventListener('DOMContentLoaded', function() {
+        (function() {
+            // Create or get widget container
             const WIDGET_CONTAINER_ID = 'momi-chat-widget-container';
             let container = document.getElementById(WIDGET_CONTAINER_ID);
+
             if (!container) {
                 container = document.createElement('div');
                 container.id = WIDGET_CONTAINER_ID;
                 document.body.appendChild(container);
             }
 
-            const loadScript = () => {
-                return new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = '/widget/assets/index.js';
-                    script.type = 'module';
-                    script.async = true;
-                    script.crossOrigin = 'anonymous';
-                    script.onload = () => {
-                        console.log('MOMi widget script loaded successfully');
-                        resolve();
-                    };
-                    script.onerror = (e) => {
-                        console.error('MOMi widget script failed to load:', e);
-                        reject(e);
-                    };
-                    document.body.appendChild(script);
-                });
+            // Load the widget script
+            const script = document.createElement('script');
+            script.src = 'https://momis-app.replit.app/widget/assets/index.js';
+            script.type = 'module';
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+
+            // Add load and error handlers
+            script.onload = () => {
+                console.log('MOMi widget loaded successfully');
             };
 
-            loadScript().catch(error => {
-                console.error('Failed to load widget, retrying in 2 seconds...', error);
-                setTimeout(loadScript, 2000);
-            });
-        });
+            script.onerror = (error) => {
+                console.error('Error loading MOMi widget:', error);
+            };
+
+            // Append the script to document
+            document.body.appendChild(script);
+        })();
     </script>
-
-    <main>
-        <section class="hero">
-            <div class="hero-content">
-                <h1>Join Our Mission to Thrive</h1>
-                <p>Step into a vibrant community of moms and meet MOMi, your 24/7 AI wellness assistant. Get real-life parenting support, personalized guidance, and tools for a healthier family journey. Feel empowered, not overwhelmed.</p>
-                <button class="join-button">Join Our Tribe</button>
-            </div>
-            <div class="hero-image">
-                <img src="https://images.unsplash.com/photo-1536337005238-94b997371b40?auto=format&fit=crop&w=500" alt="Community of Support">
-            </div>
-        </section>
-
-        <section class="mission">
-            <h2>Our Mission</h2>
-            <p>We are a community of women committed to healthy, non-toxic living for ourselves and future generations. Our mission is to raise centered, flourishing children who can shape a better world. We value family health, authentic connection, intergenerational wisdom, and a safe, supportive space to grow together. We believe we are stronger together.</p>
-        </section>
-    </main>
 </body>
 </html>
