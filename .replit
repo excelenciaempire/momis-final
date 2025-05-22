@@ -18,7 +18,7 @@ PORT = "3001"
 deploymentTarget = "cloudrun"
 buildCommand = "cd momi_project/backend && npm install && npm run build"
 runCommand = "cd momi_project/backend && npm install && node index.js"
-build = ["sh", "-c", "cd momi_project/backend && npm install && npm run build"]
+build = ["sh", "-c", "cd momi_project/frontend_widget && npm run build"]
 run = ["sh", "-c", "cd momi_project/backend && npm install && node index.js"]
 
 [[ports]]
