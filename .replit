@@ -18,10 +18,8 @@ PORT = "3001"
 deploymentTarget = "cloudrun"
 buildCommand = "cd momi_project/backend && npm install && npm run build"
 runCommand = "cd momi_project/backend && npm start"
-
-[[ports]]
-localPort = 3001
-externalPort = 80
+build = ["sh", "-c", "cd momi_project/backend && npm install && npm run build"]
+run = ["sh", "-c", "cd momi_project/backend && npm start"]
 
 [[ports]]
 localPort = 3001
@@ -36,3 +34,15 @@ mode = "sequential"
 [[workflow.default.tasks]]
 task = "shell.exec"
 args = "cd momi_project/backend && npm install && npm run build && node index.js"
+
+[workflows]
+runButton = "Start Server"
+
+[[workflows.workflow]]
+name = "test"
+mode = "sequential"
+author = 41873379
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd momi_project/backend && npm install && node index.js"
