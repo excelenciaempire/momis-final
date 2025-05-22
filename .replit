@@ -7,6 +7,7 @@ language = "nodejs"
 entrypoint = "momi_project/backend/index.js"
 
 [packager]
+language = "nodejs"
 [packager.features]
 packageSearch = true
 
@@ -16,9 +17,11 @@ PORT = "3001"
 [deployment]
 deploymentTarget = "cloudrun"
 buildCommand = "cd momi_project/backend && npm install && npm run build"
-runCommand = "cd momi_project/backend && node index.js"
-run = ["sh", "-c", "cd momi_project/backend && npm start"]
-build = ["sh", "-c", "cd momi_project/backend && npm install && npm run build"]
+runCommand = "cd momi_project/backend && npm start"
+
+[[ports]]
+localPort = 3001
+externalPort = 80
 
 [[ports]]
 localPort = 3001
