@@ -44,8 +44,11 @@ const corsOptions = {
   // allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Specify allowed headers
 };
 
-// Enable CORS for all routes initially. You can also apply it selectively.
-app.use(cors(corsOptions));
+// Enable CORS for all routes with updated options
+app.use(cors({
+  origin: true, // Allow all origins for now
+  credentials: true
+}));
 // If you want to be more specific and only apply CORS to the /widget path:
 // app.use('/widget', cors(corsOptions), express.static(widgetDistPath));
 // However, your API routes (/api/*) will also need CORS if called cross-origin.
