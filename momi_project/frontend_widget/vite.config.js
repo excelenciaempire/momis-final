@@ -6,17 +6,25 @@ export default defineConfig({
   plugins: [react()],
   base: '/widget/',
   build: {
+    // cssCodeSplit: true, // Default is true, ensures CSS is extracted
     rollupOptions: {
       output: {
-        format: 'iife', // Build as an Immediately Invoked Function Expression
-        entryFileNames: `assets/[name].js`, // Consistent naming, no hash for loader
-        chunkFileNames: `assets/[name].js`,
-        assetFileNames: `assets/[name].[ext]`
+        format: 'es', // ES Module format
+        entryFileNames: `assets/widget-loader.js`, // Consistent name for JS, no hash
+        chunkFileNames: `assets/widget-chunk.js`, // Consistent name for chunks, no hash
+        assetFileNames: (assetInfo) => {
+          // Check if the asset is CSS and give it a fixed name
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'assets/widget-styles.css';
+          }
+          // For other assets like images, fonts from CSS, etc.
+          return `assets/[name].[ext]`; // Keep original names or simple pattern
+        },
       }
     },
     // outDir: 'dist', // Default
     // assetsDir: 'assets', // Default
-    // manifest: true, // Could be useful if we want the backend to read asset names
+    // manifest: true, // Generates manifest.json, useful for server-side integration
   },
   server: {
     proxy: {

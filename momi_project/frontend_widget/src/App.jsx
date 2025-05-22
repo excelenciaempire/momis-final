@@ -5,6 +5,9 @@ import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
 import './App.css';
 
+// Set the base URL for all Axios requests
+axios.defaults.baseURL = 'https://momis-app.replit.app'; // Your deployed backend URL
+
 function App() {
   const [session, setSession] = useState(null); // For Supabase Auth session
   const [guestSession, setGuestSession] = useState(null); // For our custom guest session
