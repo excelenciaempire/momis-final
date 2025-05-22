@@ -98,31 +98,25 @@
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
-  /* Desktop styles */
   width: var(--chat-widget-desktop-width);
   height: var(--chat-widget-desktop-height);
   max-width: 95vw;
   max-height: 90vh;
   border-radius: var(--chat-widget-desktop-radius);
-  bottom: var(--chat-widget-offset);
-  right: var(--chat-widget-offset);
+  bottom: 20px;
+  right: 20px;
 }
 
 /* Mobile styles */
 @media (max-width: 767px) {
   .chat-widget-container.open .chat-window-wrapper {
-    width: var(--chat-widget-mobile-width);
-    height: var(--chat-widget-mobile-height);
-    border-radius: var(--chat-widget-mobile-radius);
-    bottom: var(--chat-widget-mobile-bottom-margin);
-    right: 50%; 
-    left: auto; 
-    transform: translate(50%, 0); /* Centering and final position for open state */
-    margin-left: auto; 
-    margin-right: auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    bottom: 0;
+    right: 0;
+    border-radius: 0;
   }
-  /* All other general .chat-window-wrapper rules for mobile (when closed) are removed from this media query.
-     The global .chat-window-wrapper rule handles the initial closed state (opacity:0, transform: translateY(100%)). */
 }
 
 /* Hide the main toggle button when chat is open (handled by JS conditional rendering, but good fallback) */
