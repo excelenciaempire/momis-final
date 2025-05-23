@@ -16,9 +16,8 @@ PORT = "3001"
 
 [deployment]
 deploymentTarget = "cloudrun"
-buildCommand = "cd momi_project/backend && npm install && npm run build"
-runCommand = "cd momi_project/backend && npm install && node index.js"
-run = ["sh", "-c", "cd momi_project/backend && npm install && node index.js"]
+build = ["sh", "-c", "(cd momi_project/frontend_admin && rm -rf dist node_modules package-lock.json && npm install && npm run build) && (cd momi_project/frontend_widget && npm install && npm run build) && (cd momi_project/backend && npm install)"]
+run = ["sh", "-c", "cd momi_project && npm start"]
 
 [[ports]]
 localPort = 3001

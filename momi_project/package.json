@@ -4,9 +4,11 @@
   "description": "Runner for MOMi project components",
   "main": "index.js",
   "scripts": {
+    "start": "node backend/index.js",
     "dev:backend": "npm start --prefix backend",
     "dev:widget": "npm run dev --prefix frontend_widget",
-    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:widget\"",
+    "dev:admin": "npm run dev --prefix frontend_admin",
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:widget\" \"npm:dev:admin\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
