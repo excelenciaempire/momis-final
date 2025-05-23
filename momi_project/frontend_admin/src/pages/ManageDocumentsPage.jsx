@@ -29,7 +29,7 @@ const ManageDocumentsPage = () => {
       // Fetching documents doesn't require admin token for read if RLS allows general read access 
       // or if using service key on backend. For now, assume public read or RLS handles it.
       const { data, error: fetchError } = await supabase
-        .from('knowledge_base__documents')
+        .from('knowledge_base_documents')
         .select('id, file_name, file_type, uploaded_at, last_indexed_at')
         .order('uploaded_at', { ascending: false });
       if (fetchError) throw fetchError;

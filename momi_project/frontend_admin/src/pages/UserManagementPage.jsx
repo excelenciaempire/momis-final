@@ -12,6 +12,7 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null); // Can be registered user or guest object
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingAction, setIsLoadingAction] = useState(false); // For delete operations
   const [notification, setNotification] = useState({ type: '', message: '' });
   const [messageChannel, setMessageChannel] = useState(null); // For Supabase Realtime subscription
 
@@ -161,24 +162,97 @@ const UserManagementPage = () => {
         console.log("Cleaning up message subscription:", messageChannel.topic);
         supabase.removeChannel(messageChannel);
         // messageChannel.unsubscribe(); // removeChannel should handle this
-        setMessageChannel(null);
+        setMessageChannel(null); // Explicitly set to null after removal
       }
     };
   }, [messageChannel]); // Run cleanup when messageChannel itself changes or component unmounts
 
+  const handleDeleteGuest = async (guestId) => {
+    if (!window.confirm(`Are you sure you want to delete guest ${guestId.substring(0,8)}... and all their conversations? This action cannot be undone.`)) {
+      return;
+    }
+    setIsLoadingAction(true);
+    setNotification({ type: '', message: '' });
+    try {
+      const token = await getToken();
+      await axios.delete(`/api/admin/guests/${guestId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setNotification({ type: 'success', message: 'Guest user and their data deleted successfully.' });
+      fetchGuestUsers(); // Refresh guest list
+      if (selectedUser && selectedUser.id === guestId && selectedUser.type === 'guest') {
+        setSelectedUser(null);
+        setConversations([]);
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      handleFetchError(err, 'Failed to delete guest user.');
+    }
+    setIsLoadingAction(false);
+  };
+
+  const handleDeleteConversation = async (conversationId) => {
+    if (!window.confirm(`Are you sure you want to delete conversation ${conversationId.substring(0,8)}...? This action cannot be undone.`)) {
+      return;
+    }
+    setIsLoadingAction(true);
+    setNotification({ type: '', message: '' });
+    try {
+      const token = await getToken();
+      await axios.delete(`/api/admin/conversations/${conversationId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setNotification({ type: 'success', message: 'Conversation deleted successfully.' });
+      // Refresh conversations if this one was under the selected user
+      if (selectedUser) {
+        handleUserSelect(selectedUser, selectedUser.type); // This re-fetches conversations for the current user
+      }
+      if (selectedConversation && selectedConversation.id === conversationId) {
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+    } catch (err) {
+      handleFetchError(err, 'Failed to delete conversation.');
+    }
+    setIsLoadingAction(false);
+  };
+
   const renderUserItem = (user, type) => (
-    <li key={user.id} onClick={() => handleUserSelect(user, type)} className={`list-item ${selectedUser?.id === user.id && selectedUser?.type === type ? 'selected' : ''}`}>
-      {type === 'registered' ? (user.email || `User ID: ${user.id.substring(0,8)}...`) : `Guest ID: ${user.id.substring(0,8)}...`}
-      <span className="date-info">(Created: {new Date(user.created_at).toLocaleDateString()})</span>
+    <li key={user.id} className={`list-item ${selectedUser?.id === user.id && selectedUser?.type === type ? 'selected' : ''}`}>
+      <span onClick={() => handleUserSelect(user, type)} className="item-selectable-content">
+        {type === 'registered' ? (user.email || `User ID: ${user.id.substring(0,8)}...`) : `Guest ID: ${user.id.substring(0,8)}...`}
+        <span className="date-info">(Created: {new Date(user.created_at).toLocaleDateString()})</span>
+      </span>
+      {type === 'guest' && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDeleteGuest(user.id); }}
+          className="button-icon danger"
+          aria-label="Delete guest"
+          title="Delete Guest"
+          disabled={isLoadingAction}
+        >
+          🗑️
+        </button>
+      )}
     </li>
   );
 
   const renderConversationItem = (conv) => (
-    <li key={conv.id} onClick={() => handleConversationSelect(conv)} className={`list-item ${selectedConversation?.id === conv.id ? 'selected' : ''}`}>
-      Conv. ID: {conv.id.substring(0,8)}...
-      <span className="date-info">(Created: {new Date(conv.created_at).toLocaleString()})</span>
-      {/* TODO: Add conversation summary if available from backend */}
-      {/* {conv.summary && <p className="summary-preview">{conv.summary.substring(0,50)}...</p>} */}
+    <li key={conv.id} className={`list-item ${selectedConversation?.id === conv.id ? 'selected' : ''}`}>
+      <span onClick={() => handleConversationSelect(conv)} className="item-selectable-content">
+        Conv. ID: {conv.id.substring(0,8)}...
+        <span className="date-info">(Created: {new Date(conv.created_at).toLocaleString()})</span>
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.id); }}
+        className="button-icon danger"
+        aria-label="Delete conversation"
+        title="Delete Conversation"
+        disabled={isLoadingAction}
+      >
+        🗑️
+      </button>
     </li>
   );
 

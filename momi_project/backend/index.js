@@ -641,6 +641,126 @@ adminRouter.get('/analytics/daily-active-users', async (req, res) => {
     }
 });
 
+// Delete a specific guest user and all their associated data
+adminRouter.delete('/guests/:guestId', async (req, res) => {
+    const { guestId } = req.params;
+    if (!guestId) {
+        return res.status(400).json({ error: 'Guest ID is required.' });
+    }
+
+    try {
+        // Step 1: Get all conversation IDs for the guest user
+        const { data: conversations, error: convError } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('guest_user_id', guestId);
+
+        if (convError) {
+            console.error(`Error fetching conversations for guest ${guestId}:`, convError.message);
+            throw new Error(`Failed to fetch conversations for guest: ${convError.message}`);
+        }
+
+        if (conversations && conversations.length > 0) {
+            const conversationIds = conversations.map(c => c.id);
+
+            // Step 2: Delete messages for those conversations
+            const { error: messagesError } = await supabase
+                .from('messages')
+                .delete()
+                .in('conversation_id', conversationIds);
+
+            if (messagesError) {
+                console.error(`Error deleting messages for conversations of guest ${guestId}:`, messagesError.message);
+                throw new Error(`Failed to delete messages for guest's conversations: ${messagesError.message}`);
+            }
+
+            // Step 3: Delete those conversations
+            const { error: convDeleteError } = await supabase
+                .from('conversations')
+                .delete()
+                .in('id', conversationIds);
+
+            if (convDeleteError) {
+                console.error(`Error deleting conversations for guest ${guestId}:`, convDeleteError.message);
+                throw new Error(`Failed to delete conversations for guest: ${convDeleteError.message}`);
+            }
+        }
+
+        // Step 4: Delete the guest user
+        const { data: guestData, error: guestDeleteError } = await supabase
+            .from('guest_users')
+            .delete()
+            .eq('id', guestId)
+            .select()
+            .single();
+
+        if (guestDeleteError) {
+            console.error(`Error deleting guest user ${guestId}:`, guestDeleteError.message);
+            throw new Error(`Failed to delete guest user: ${guestDeleteError.message}`);
+        }
+
+        if (!guestData) {
+            return res.status(404).json({ message: 'Guest user not found.' });
+        }
+
+        res.status(200).json({ 
+            message: `Guest user (ID: ${guestId}) and all associated data deleted successfully.`,
+            deletedGuest: guestData
+        });
+
+    } catch (error) {
+        console.error(`Error in delete guest user endpoint for ID ${guestId}:`, error);
+        res.status(500).json({ error: error.message || 'Internal server error during guest user deletion.' });
+    }
+});
+
+// Delete a specific conversation and its messages
+adminRouter.delete('/conversations/:conversationId', async (req, res) => {
+    const { conversationId } = req.params;
+    if (!conversationId) {
+        return res.status(400).json({ error: 'Conversation ID is required.' });
+    }
+
+    try {
+        // Step 1: Delete messages for the conversation
+        const { error: messagesError } = await supabase
+            .from('messages')
+            .delete()
+            .eq('conversation_id', conversationId);
+
+        if (messagesError) {
+            console.error(`Error deleting messages for conversation ${conversationId}:`, messagesError.message);
+            throw new Error(`Failed to delete messages for conversation: ${messagesError.message}`);
+        }
+
+        // Step 2: Delete the conversation itself
+        const { data: convData, error: convDeleteError } = await supabase
+            .from('conversations')
+            .delete()
+            .eq('id', conversationId)
+            .select()
+            .single();
+
+        if (convDeleteError) {
+            console.error(`Error deleting conversation ${conversationId}:`, convDeleteError.message);
+            throw new Error(`Failed to delete conversation: ${convDeleteError.message}`);
+        }
+
+        if (!convData) {
+            return res.status(404).json({ message: 'Conversation not found.' });
+        }
+
+        res.status(200).json({ 
+            message: `Conversation (ID: ${conversationId}) and its messages deleted successfully.`,
+            deletedConversation: convData
+        });
+
+    } catch (error) {
+        console.error(`Error in delete conversation endpoint for ID ${conversationId}:`, error);
+        res.status(500).json({ error: error.message || 'Internal server error during conversation deletion.' });
+    }
+});
+
 // Mount the admin router under /api/admin
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
