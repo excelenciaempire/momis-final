@@ -6,7 +6,7 @@ import MessageInput from './components/MessageInput';
 import './App.css';
 
 // Set the base URL for all Axios requests
-axios.defaults.baseURL = 'https://momis-app.replit.app'; // Your deployed backend URL
+axios.defaults.baseURL = 'https://momis-project.replit.app'; // Your deployed backend URL
 
 function App() {
   const [session, setSession] = useState(null); // For Supabase Auth session
@@ -17,7 +17,7 @@ function App() {
   const [currentUserProfileId, setCurrentUserProfileId] = useState(null); // ID from public.users table
 
   const ToggleIcon = () => (
-    <img src="https://momis-app.replit.app/widget/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
+    <img src="https://momis-project.replit.app/widget/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
   );
   
   useEffect(() => {

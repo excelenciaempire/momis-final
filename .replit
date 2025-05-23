@@ -35,7 +35,7 @@ task = "shell.exec"
 args = "cd momi_project/backend && npm install && npm run build && node index.js"
 
 [workflows]
-runButton = "test"
+runButton = "Build and Run"
 
 [[workflows.workflow]]
 name = "test"
@@ -45,3 +45,12 @@ author = 41873379
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd momi_project/backend && npm install && node index.js"
+
+[[workflows.workflow]]
+name = "Build and Run"
+author = 41873379
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd momi_project && npm install && npm run dev"
