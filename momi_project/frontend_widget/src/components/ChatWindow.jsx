@@ -35,7 +35,7 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
         id: 'momi-initial-greeting',
         sender_type: 'momi',
         content_type: 'text',
-        content: "Hi, I'm MOMi – your personal wellness guide and parenting support coach. I'm here to help you feel more confident and connected in your journey to raise a healthy family.\n\nWhat would you like support with today?\n\n• A quick tip for meals, sleep, or stress\n• Help calming a tough moment with your child\n• Ideas to feel more balanced or energized\n\nJust type what's on your mind. I'm here 💜",
+        content: "Hi! I'm MOMi, your AI wellness coach and parenting partner. What's on your mind today?\n\n• Easy meal ideas\n• Calming a stressful moment\n• Tips for better sleep or more energy\n\nTell me how I can help? 💜",
         timestamp: new Date().toISOString(),
       }
     ]);
@@ -80,7 +80,7 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
             id: 'momi-initial-greeting',
             sender_type: 'momi',
             content_type: 'text',
-            content: "Hi, I'm MOMi – your personal wellness guide and parenting support coach. I'm here to help you feel more confident and connected in your journey to raise a healthy family.\n\nWhat would you like support with today?\n\n• A quick tip for meals, sleep, or stress\n• Help calming a tough moment with your child\n• Ideas to feel more balanced or energized\n\nJust type what's on your mind. I'm here 💜",
+            content: "Hi! I'm MOMi, your AI wellness coach and parenting partner. What's on your mind today?\n\n• Easy meal ideas\n• Calming a stressful moment\n• Tips for better sleep or more energy\n\nTell me how I can help? 💜",
             timestamp: new Date().toISOString(),
           }
         ]);
@@ -108,7 +108,7 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
         };
         setMessages(prevMessages => [...prevMessages, userTextMessage]);
     }
-    
+
     let uploadedImageUrl = null;
     let optimisticImageMessageId = null;
 
@@ -169,9 +169,9 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
         ...(userId ? { userId } : { guestUserId }),
         ...(uploadedImageUrl && { imageUrl: uploadedImageUrl })
       };
-      
+
       const response = await axios.post('/api/chat/message', payload);
-      
+
       const momiReply = {
         sender_type: 'momi',
         content_type: 'text',
@@ -192,7 +192,7 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
             console.warn('ChatWindow: newGuestSession received but onGuestSessionUpdate prop is missing.');
         }
       }
-      
+
       // Remove optimistic text message if it was successfully processed as part of the image message or separately
       if (text.trim() && optimisticTextMessageId && (!uploadedImageUrl || (uploadedImageUrl && messageToSend !== "Image attached"))){
          // if text was primary and image was secondary, or no image, the text message is distinct and handled by backend
@@ -257,4 +257,4 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuest
   );
 };
 
-export default ChatWindow; 
+export default ChatWindow;
