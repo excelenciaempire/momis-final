@@ -21,16 +21,16 @@ const UnauthorizedPage = () => (
 // Protected Route Component for Admin Areas
 const ProtectedRoute = ({ session, userRole }) => {
   // TEMPORARILY BYPASSING AUTH FOR PREVIEW - REMEMBER TO RE-ENABLE
-  console.log("Admin ProtectedRoute: Bypassing auth for preview. Current session:", session, "Current role:", userRole);
-  return <AdminLayout session={session} />;
+  // console.log("Admin ProtectedRoute: Bypassing auth for preview. Current session:", session, "Current role:", userRole);
+  // return <AdminLayout session={session} />;
 
   // Original logic (re-enable for production/security):
-  // if (!session) return <Navigate to="/login" replace />;
-  // if (userRole !== 'admin') {
-  //   console.warn("User does not have admin role. Current role:", userRole);
-  //   return <Navigate to="/unauthorized" replace />;
-  // }
-  // return <AdminLayout session={session} />;
+  if (!session) return <Navigate to="/login" replace />;
+  if (userRole !== 'admin') {
+    console.warn("User does not have admin role. Current role:", userRole);
+    return <Navigate to="/unauthorized" replace />;
+  }
+  return <AdminLayout session={session} />;
 };
 
 // Basic Layout for Authenticated Admin Routes

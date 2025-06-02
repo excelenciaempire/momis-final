@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "VITE_SUPABASE_URL=https://qohvdyqsulzzdtvavpgz.supabase.co VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaHZkeXFzdWx6emR0dmF2cGd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3NjEzNjMsImV4cCI6MjA2MzMzNzM2M30.TzIjwzHoYoyvROii1tzSrbevlunXIafrM2YVMafsXAU vite",
-    "build": "VITE_SUPABASE_URL=https://qohvdyqsulzzdtvavpgz.supabase.co VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaHZkeXFzdWx6emR0dmF2cGd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3NjEzNjMsImV4cCI6MjA2MzMzNzM2M30.TzIjwzHoYoyvROii1tzSrbevlunXIafrM2YVMafsXAU vite build",
+    "dev": "vite",
+    "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

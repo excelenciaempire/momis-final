@@ -906,20 +906,51 @@ app.post('/api/auth/register', async (req, res) => {
 
 // --- Chat Routes ---
 app.post('/api/chat/message', async (req, res) => {
-    const { conversationId, message, userId, guestUserId, imageUrl } = req.body;
+    const { conversationId, message, userId, guestUserId: initialGuestUserId, imageUrl } = req.body;
     let currentConversationId = conversationId;
+    let currentGuestUserId = initialGuestUserId;
+    let newGuestCreated = false;
 
     if (!message && !imageUrl) {
         return res.status(400).json({ error: 'Message or image URL is required.' });
     }
-    if (!userId && !guestUserId) {
+    if (!userId && !currentGuestUserId) {
         return res.status(400).json({ error: 'User ID or Guest User ID is required.' });
     }
 
     try {
+        // Validate or create guest user if guestUserId is provided
+        if (currentGuestUserId && !userId) {
+            const { data: existingGuest, error: guestCheckError } = await supabase
+                .from('guest_users')
+                .select('id')
+                .eq('id', currentGuestUserId)
+                .single();
+
+            if (guestCheckError || !existingGuest) {
+                console.warn(`Guest user ${currentGuestUserId} not found or error checking. Creating a new one. Error: ${guestCheckError?.message}`);
+                // Create a new guest session
+                const sessionToken = crypto.randomBytes(32).toString('hex');
+                const { data: newGuest, error: newGuestError } = await supabase
+                    .from('guest_users')
+                    .insert([{ session_token: sessionToken }])
+                    .select('id, session_token')
+                    .single();
+                
+                if (newGuestError) {
+                    console.error('Failed to create a new guest user fallback:', newGuestError);
+                    throw new Error('Failed to establish a valid guest session.');
+                }
+                currentGuestUserId = newGuest.id;
+                newGuestCreated = true; // Flag that a new guest was created
+                console.log('Created new fallback guest session:', { guestUserId: newGuest.id });
+            }
+        }
+
         // 1. Create conversation if it doesn't exist
         if (!currentConversationId) {
-            const convPayload = userId ? { user_id: userId } : { guest_user_id: guestUserId };
+            // Use the potentially updated currentGuestUserId
+            const convPayload = userId ? { user_id: userId } : { guest_user_id: currentGuestUserId };
             const { data: newConversation, error: convError } = await supabase
                 .from('conversations')
                 .insert([convPayload])
@@ -1056,10 +1087,33 @@ app.post('/api/chat/message', async (req, res) => {
         const { error: momiMessageError } = await supabase.from('messages').insert([momiMessagePayload]);
         if (momiMessageError) throw momiMessageError;
 
-        res.json({ 
+        const responsePayload = { 
             reply: momiResponseText, 
             conversationId: currentConversationId 
-        });
+        };
+
+        if (newGuestCreated && currentGuestUserId) {
+            // If a new guest was created, we need to send back the new guestUserId and sessionToken
+            // The client needs the sessionToken to store it, although for this specific flow, only guestUserId is used by /api/chat/message
+            // Fetching the session_token for the newly created guest to be complete
+             const { data: guestDetails, error: guestDetailError } = await supabase
+                .from('guest_users')
+                .select('session_token')
+                .eq('id', currentGuestUserId)
+                .single();
+
+            if (guestDetailError || !guestDetails) {
+                console.error('Could not retrieve session token for newly created guest:', currentGuestUserId, guestDetailError);
+                // Not critical for chat to continue, but client won't be able to update localStorage correctly
+            } else {
+                 responsePayload.newGuestSession = {
+                    guestUserId: currentGuestUserId,
+                    sessionToken: guestDetails.session_token 
+                };
+            }
+        }
+
+        res.json(responsePayload);
 
     } catch (error) {
         console.error('Error processing chat message:', error);

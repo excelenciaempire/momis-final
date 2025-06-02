@@ -19,7 +19,7 @@ const MomiLogo = () => (
   </div>
 );
 
-const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen }) => {
+const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen, onGuestSessionUpdate }) => {
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -182,6 +182,15 @@ const ChatWindow = ({ userId, guestUserId, sessionToken, toggleChatOpen }) => {
 
       if (response.data.conversationId && !conversationId) {
         setConversationId(response.data.conversationId);
+      }
+
+      // Check if a new guest session was created and update it
+      if (response.data.newGuestSession) {
+        if (onGuestSessionUpdate) {
+            onGuestSessionUpdate(response.data.newGuestSession);
+        } else {
+            console.warn('ChatWindow: newGuestSession received but onGuestSessionUpdate prop is missing.');
+        }
       }
       
       // Remove optimistic text message if it was successfully processed as part of the image message or separately

@@ -20,6 +20,17 @@ function App() {
     <img src="https://momis-project.replit.app/widget/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
   );
   
+  // Function to update guest session in localStorage and state
+  const updateGuestSessionDetails = (newSessionData) => {
+    if (newSessionData && newSessionData.guestUserId && newSessionData.sessionToken) {
+      localStorage.setItem('momiGuestSession', JSON.stringify(newSessionData));
+      setGuestSession(newSessionData);
+      console.log('Updated guest session from ChatWindow:', newSessionData);
+    } else {
+      console.warn('Attempted to update guest session with invalid data:', newSessionData);
+    }
+  };
+  
   useEffect(() => {
     setLoading(true);
     supabase?.auth.getSession().then(async ({ data: { session } }) => {
@@ -231,6 +242,7 @@ function App() {
               guestUserId={guestSession?.guestUserId}
               sessionToken={guestSession?.sessionToken}
               toggleChatOpen={toggleChatOpen} // Pass this to ChatWindow for its own close button
+              onGuestSessionUpdate={updateGuestSessionDetails} // Pass the update function
             />
           </div>
         </>
