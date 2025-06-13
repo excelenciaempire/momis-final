@@ -1,254 +1,148 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { supabase } from './supabaseClient';
+import supabase from './supabaseClient'; // Ensure this is correctly configured
 import ChatWindow from './components/ChatWindow';
-import MessageInput from './components/MessageInput';
 import './App.css';
 
 // Set the base URL for all Axios requests
 axios.defaults.baseURL = 'https://momis-project.replit.app'; // Your deployed backend URL
 
-function App() {
-  const [session, setSession] = useState(null); // For Supabase Auth session
-  const [guestSession, setGuestSession] = useState(null); // For our custom guest session
-  const [loading, setLoading] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
-  const [currentUserProfileId, setCurrentUserProfileId] = useState(null); // ID from public.users table
+function App({ mode = 'floating' }) {
+    const [isOpen, setIsOpen] = useState(mode === 'fullpage');
+    const [messages, setMessages] = useState([]);
+    const [isSending, setIsSending] = useState(false);
+    const [error, setError] = useState(null);
+    const [conversationId, setConversationId] = useState(null);
+    const [guestUserId, setGuestUserId] = useState(null);
+    const [isInitializing, setIsInitializing] = useState(true);
 
-  const ToggleIcon = () => (
-    <img src="https://momis-project.replit.app/widget/momi-icon-2.png" alt="MOMi" width="32" height="32" style={{ objectFit: 'contain' }} />
-  );
-  
-  // Function to update guest session in localStorage and state
-  const updateGuestSessionDetails = (newSessionData) => {
-    if (newSessionData && newSessionData.guestUserId && newSessionData.sessionToken) {
-      localStorage.setItem('momiGuestSession', JSON.stringify(newSessionData));
-      setGuestSession(newSessionData);
-      console.log('Updated guest session from ChatWindow:', newSessionData);
-    } else {
-      console.warn('Attempted to update guest session with invalid data:', newSessionData);
-    }
-  };
-  
-  useEffect(() => {
-    setLoading(true);
-    supabase?.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        ensureGuestSession();
-      }
-      setLoading(false);
-    });
+    useEffect(() => {
+        const initializeSession = async () => {
+            let storedGuestId = localStorage.getItem('momiGuestUserId');
+            if (storedGuestId) {
+                setGuestUserId(storedGuestId);
+            } else {
+                try {
+                    const { data } = await axios.post('/api/guest/session');
+                    if (data.guestUserId) {
+                        localStorage.setItem('momiGuestUserId', data.guestUserId);
+                        setGuestUserId(data.guestUserId);
+                    }
+                } catch (err) {
+                    setError('Could not initialize session.');
+                    console.error('Failed to create guest session:', err);
+                }
+            }
+            setIsInitializing(false);
+        };
 
-    const { data: authListener } = supabase?.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        if (session) {
-          await fetchUserProfile(session.user.id);
-          // If user is logged in, clear guest session from local storage
-          localStorage.removeItem('momiGuestSession');
-          setGuestSession(null);
-        } else {
-          // If user logs out or no Supabase session, clear user profile ID
-          setCurrentUserProfileId(null); 
-          ensureGuestSession();
+        initializeSession();
+    }, []);
+    
+    // Function to handle sending messages
+    const handleSendMessage = async (message, imageUrl = null) => {
+        if ((!message || message.trim() === '') && !imageUrl) return;
+
+        const userMessage = { sender_type: 'user', content: message, content_type: imageUrl ? 'image_url' : 'text', timestamp: new Date().toISOString() };
+        setMessages(prev => [...prev, userMessage]);
+        setIsSending(true);
+        setError(null);
+
+        try {
+            const payload = {
+                message,
+                imageUrl,
+                conversationId,
+                guestUserId
+            };
+
+            const { data } = await axios.post('/api/chat/message', payload);
+
+            const momiMessage = { sender_type: 'momi', content: data.reply, timestamp: new Date().toISOString() };
+            setMessages(prev => [...prev, momiMessage]);
+
+            if (data.conversationId && !conversationId) {
+                setConversationId(data.conversationId);
+            }
+            if (data.newGuestSession) {
+                setGuestUserId(data.newGuestSession.guestUserId);
+                localStorage.setItem('momiGuestUserId', data.newGuestSession.guestUserId);
+            }
+        } catch (err) {
+            const errorMessage = err.response?.data?.details || 'Failed to send message.';
+            setError(errorMessage);
+            const errorMsg = { sender_type: 'momi', content: `Error: ${errorMessage}`, timestamp: new Date().toISOString(), isError: true };
+            setMessages(prev => [...prev, errorMsg]);
+        } finally {
+            setIsSending(false);
         }
-      }
-    );
-
-    // Initial check for guest session if no Supabase session found initially
-    if (!session) {
-        ensureGuestSession();
-    }
-    // setLoading(false); // Moved up
-
-    return () => {
-      authListener?.subscription.unsubscribe();
     };
-  }, []);
 
-  const fetchUserProfile = async (authUserId) => {
-    if (!authUserId) {
-      setCurrentUserProfileId(null);
-      return;
-    }
-    try {
-      console.log('Fetching user profile for auth_user_id:', authUserId);
-      // Assuming RLS allows authenticated user to read their own profile from public.users
-      const { data, error } = await supabase
-        .from('users') // Your public users table
-        .select('id') // Select the primary key of your public.users table
-        .eq('auth_user_id', authUserId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        if (error.code === 'PGRST116' && !error.message.includes("exact")) { 
-          // PGRST116: " exactamente cero filas" (zero rows) - profile not yet created
-          console.warn('User profile not found in public.users for auth_user_id:', authUserId, 'Might need to be created via /api/auth/register.');
-          // This can happen if signup process didn't complete or sync failed.
-          // We don't set error here, as signup flow might create it.
-          setCurrentUserProfileId(null);
-        } else {
-           throw error; // Rethrow other errors
+    const toggleChat = () => {
+        if (mode === 'floating') {
+            setIsOpen(!isOpen);
         }
-      } else if (data) {
-        console.log('Fetched user profile ID from public.users:', data.id);
-        setCurrentUserProfileId(data.id);
-      } else {
-        console.warn('No data returned for user profile, but no error. auth_user_id:', authUserId);
-        setCurrentUserProfileId(null);
-      }
-    } catch (err) {
-      console.error('Failed to fetch user profile from public.users:', err);
-      setCurrentUserProfileId(null);
-      // Optionally, set an error state to show to the user
-    }
-  };
+    };
 
-  const ensureGuestSession = async () => {
-    if (session) return; // Don't create guest session if Supabase session exists
-
-    let storedGuestSession = localStorage.getItem('momiGuestSession');
-    if (storedGuestSession) {
-      try {
-        storedGuestSession = JSON.parse(storedGuestSession);
-        // Optionally: add a check to see if this session is still valid on the backend
-        setGuestSession(storedGuestSession);
-        console.log('Using stored guest session:', storedGuestSession);
-        return;
-      } catch (e) {
-        localStorage.removeItem('momiGuestSession'); // Clear invalid session
-      }
+    if (isInitializing) {
+        return (
+            <div className="chat-widget-container fullpage-mode">
+                <div className="chat-window">
+                    <div className="message-list">
+                        <div className="initialization-message">Initializing session... If this persists, please refresh.</div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
-    console.log('No active guest session, creating new one...');
-    try {
-      const response = await axios.post('/api/guest/session'); 
-      // Ensure the response is valid JSON and has the expected properties
-      if (response.data && response.data.guestUserId && response.data.sessionToken) {
-        localStorage.setItem('momiGuestSession', JSON.stringify(response.data));
-        setGuestSession(response.data);
-        console.log('Created new guest session:', response.data);
-      } else {
-        // This case means we didn't get the expected JSON structure.
-        // The SyntaxError might have already been thrown by axios if Content-Type was wrong.
-        console.error('Failed to create guest session: Invalid response data from /api/guest/session', response.data);
-        // Ensure guestSession is not set with bad data
-        setGuestSession(null);
-        localStorage.removeItem('momiGuestSession');
-      }
-    } catch (error) {
-      console.error('Failed to create guest session (axios error):', error);
-      // If error.response contains data, it might be the HTML.
-      if (error.response && error.response.data) {
-        console.error('Error response data:', error.response.data.substring(0, 200) + '...'); // Log a snippet
-      }
-      setGuestSession(null); // Ensure guestSession is null on error
-      localStorage.removeItem('momiGuestSession');
+    // Add a class to the container based on the mode and open state
+    const containerClasses = `chat-widget-container ${
+        mode === 'floating' ? (isOpen ? 'open' : 'closed') : ''
+    }`;
+
+    // The full-page view has a different root container class
+    if (mode === 'fullpage') {
+        return (
+            <div className="chat-widget-container fullpage-mode">
+                 <ChatWindow
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    isSending={isSending}
+                    error={error}
+                    onClose={() => {}} // No close button in fullpage
+                    isWindowOpen={true}
+                    mode={mode}
+                />
+            </div>
+        )
     }
-  };
 
-  // Basic login/logout for testing Supabase Auth
-  const handleLogin = async () => {
-    if (!supabase) return;
-    const email = prompt("Enter your email:");
-    const password = prompt("Enter your password:");
-    if (!email || !password) return;
-    try {
-      const { error, data: loginData } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      // Session change will trigger fetchUserProfile via onAuthStateChange
-      alert('Logged in!');
-    } catch (error) {
-      alert(error.error_description || error.message);
-    }
-  };
+    return (
+        <div className={containerClasses}>
+            {/* The floating button is only rendered in floating mode */}
+            <button className={`chat-toggle-button ${isOpen ? 'open' : ''}`} onClick={toggleChat}>
+                {isOpen ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                )}
+            </button>
 
-  const handleSignup = async () => {
-    if (!supabase) return;
-    const email = prompt("Enter your email:");
-    const password = prompt("Enter your password:");
-    if (!email || !password) return;
-    try {
-      const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (signUpData.user && signUpData.user.id) {
-        // Sync with our public.users table
-        console.log('Attempting to register user profile with auth_user_id:', signUpData.user.id);
-        const response = await axios.post('/api/auth/register', {
-          auth_user_id: signUpData.user.id,
-          email: signUpData.user.email,
-        });
-        console.log('Profile registration response:', response.data);
-        // After successful registration, fetch the profile to get the public.users.id
-        // The onAuthStateChange listener should also trigger this, but explicit call ensures it.
-        if (response.data && response.data.user && response.data.user.id) {
-          console.log('Setting current user profile ID from register response:', response.data.user.id);
-          setCurrentUserProfileId(response.data.user.id); 
-        } else {
-           // Fallback to fetching if register endpoint doesn't return the ID directly in response.data.user.id
-           await fetchUserProfile(signUpData.user.id);
-        }
-        alert('Signed up! Please check your email for verification if enabled.');
-      } else {
-        alert('Signup successful, but no user data returned from Supabase to sync.')
-      }
-      
-    } catch (error) {
-      console.error("Signup or profile sync error:", error.response ? error.response.data : error);
-      alert(error.error_description || error.message || 'Signup failed.');
-    }
-  };
-
-
-  const handleLogout = async () => {
-    if (!supabase) return;
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      alert('Logged out!');
-    } catch (error) {
-      alert(error.error_description || error.message);
-    }
-  };
-
-  const toggleChatOpen = () => {
-    setIsChatOpen(!isChatOpen);
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div className={`chat-widget-container ${isChatOpen ? 'open' : 'closed'}`}>
-      {!isChatOpen && (
-        <button className="chat-toggle-button" onClick={toggleChatOpen} aria-label={'Open chat with MOMi'}>
-          <ToggleIcon />
-        </button>
-      )}
-      {isChatOpen && (
-        <>
-          <div className="chat-overlay" onClick={toggleChatOpen}></div>
-          <div className="chat-window-wrapper">
-            <ChatWindow
-              conversationId={conversationId}
-              setConversationId={setConversationId}
-              userId={currentUserProfileId}
-              guestUserId={guestSession?.guestUserId}
-              sessionToken={guestSession?.sessionToken}
-              toggleChatOpen={toggleChatOpen} // Pass this to ChatWindow for its own close button
-              onGuestSessionUpdate={updateGuestSessionDetails} // Pass the update function
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
+            {/* The chat window wrapper appears when open */}
+            <div className={`chat-window-wrapper ${isOpen ? 'open' : ''}`}>
+                 <ChatWindow
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    isSending={isSending}
+                    error={error}
+                    onClose={toggleChat}
+                    isWindowOpen={isOpen}
+                    mode={mode}
+                />
+            </div>
+        </div>
+    );
 }
 
 export default App;

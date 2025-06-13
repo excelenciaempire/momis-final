@@ -13,12 +13,10 @@ export default defineConfig({
         entryFileNames: `assets/widget-loader.js`, // Consistent name for JS, no hash
         chunkFileNames: `assets/widget-chunk.js`, // Consistent name for chunks, no hash
         assetFileNames: (assetInfo) => {
-          // Check if the asset is CSS and give it a fixed name
           if (assetInfo.name && assetInfo.name.endsWith('.css')) {
             return 'assets/widget-styles.css';
           }
-          // For other assets like images, fonts from CSS, etc.
-          return `assets/[name].[ext]`; // Keep original names or simple pattern
+          return `assets/[name].[ext]`;
         },
       }
     },

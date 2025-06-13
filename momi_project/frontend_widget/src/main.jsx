@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.jsx'
+import App from './App'
 
 // Ensure this ID matches the one the loader script in the landing page will create
 const WIDGET_CONTAINER_ID = 'momi-chat-widget-container'
@@ -25,11 +25,15 @@ if (!container) {
   // }
 }
 
+// Check for a configuration object on the window
+const config = window.momiChatWidget || {}
+const mode = config.mode || 'floating' // Default to 'floating'
+
 // Check again if container exists before rendering
 if (container) {
     createRoot(container).render(
         <StrictMode>
-            <App />
+            <App mode={mode} />
         </StrictMode>,
     )
 } else {

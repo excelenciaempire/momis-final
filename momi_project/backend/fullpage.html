@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOMi - Full Page Chat</title>
+    <!-- The same widget CSS can be used, as it likely contains the core styles -->
+    <link rel="stylesheet" href="/widget/assets/widget-styles.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f7f8fa; /* A light, modern background */
+            overflow: hidden; /* Hide scrollbars */
+        }
+        /* This container will be the mounting point for the widget */
+        #momi-chat-widget-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: none; /* Override any shadow from the widget's default styles */
+            border-radius: 0; /* Override any border-radius */
+        }
+        /* It's possible the widget script adds its own root with specific styles.
+           This rule targets a common pattern to ensure it fills the container. */
+        #momi-chat-widget-container > div {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 100vh !important;
+            position: static !important; /* Override fixed/absolute positioning */
+        }
+    </style>
+</head>
+<body>
+    <!-- The widget loader script will mount the chat interface into this container -->
+    <div id="momi-chat-widget-container"></div>
+
+    <!-- 
+      This script will initialize the widget in "full-page" mode.
+      We'll pass a configuration object to the loader.
+    -->
+    <script>
+      // Configuration for the widget loader
+      window.momiChatWidget = {
+        mode: 'fullpage' // Signal to the loader to render in full-page mode
+      };
+    </script>
+    
+    <!-- The main loader script for the widget -->
+    <script type="module" src="/widget/assets/widget-loader.js" crossorigin="anonymous"></script>
+</body>
+</html> 

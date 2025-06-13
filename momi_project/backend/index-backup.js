@@ -57,24 +57,29 @@ app.use(cors({
 // --- Middleware for serving static frontend files ---
 
 // Serve Landing Page (from momi_project/frontend_landing)
-app.use(express.static(path.join(__dirname, '../frontend_landing')));
+const landingPath = path.join(__dirname, '../frontend_landing');
+app.use(express.static(landingPath));
 
 // Serve Admin Panel (from momi_project/frontend_admin/dist)
 // All /admin/* routes should serve the admin panel's index.html for client-side routing
 const adminDistPath = path.join(__dirname, '../frontend_admin/dist');
 app.use('/admin', express.static(adminDistPath));
-app.get( /^\/admin\/.*/ , (req, res) => { // Changed to use a RegExp for Express 5 compatibility
+app.get('/admin/*', (req, res) => {
     res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
+// ADDING A MORE SPECIFIC ROUTE FOR WIDGET ASSETS
+const widgetAssetsPath = path.join(__dirname, '../frontend_widget/dist/assets');
+app.use('/widget/assets', express.static(widgetAssetsPath));
+
 // Serve Chat Widget static assets (from momi_project/frontend_widget/dist)
-// This allows the widget's JS/CSS to be loaded, e.g., by the landing page or for testing.
 const widgetDistPath = path.join(__dirname, '../frontend_widget/dist');
 app.use('/widget', express.static(widgetDistPath));
-// If the widget has an index.html for testing, you could serve it too:
-// app.get('/widget', (req, res) => {
-//     res.sendFile(path.join(widgetDistPath, 'index.html'));
-// });
+
+// Serve Widget HTML Page Route
+app.get('/widget/fullpage', (req, res) => {
+    res.sendFile(path.join(__dirname, 'fullpage.html'));
+});
 
 // Initialize Supabase client
 // It's recommended to use the SERVICE_ROLE_KEY for backend operations 
@@ -704,454 +709,28 @@ adminRouter.delete('/guests/:guestId', async (req, res) => {
         }
 
         res.status(200).json({ 
-            message: `Guest user (ID: ${guestId}) and all associated data deleted successfully.`,
+            message: `Document (ID: ${guestId}) and its associated conversations deleted successfully.`,
             deletedGuest: guestData
         });
 
     } catch (error) {
         console.error(`Error in delete guest user endpoint for ID ${guestId}:`, error);
-        res.status(500).json({ error: error.message || 'Internal server error during guest user deletion.' });
+        // Check if the error message already contains specifics from Supabase errors
+        const detail = error.message.includes('Failed to delete') ? error.message : 'Internal server error during guest user deletion.';
+        res.status(500).json({ error: detail });
     }
 });
 
-// Delete a specific conversation and its messages
-adminRouter.delete('/conversations/:conversationId', async (req, res) => {
-    const { conversationId } = req.params;
-    if (!conversationId) {
-        return res.status(400).json({ error: 'Conversation ID is required.' });
-    }
-
-    try {
-        // Step 1: Delete messages for the conversation
-        const { error: messagesError } = await supabase
-            .from('messages')
-            .delete()
-            .eq('conversation_id', conversationId);
-
-        if (messagesError) {
-            console.error(`Error deleting messages for conversation ${conversationId}:`, messagesError.message);
-            throw new Error(`Failed to delete messages for conversation: ${messagesError.message}`);
-        }
-
-        // Step 2: Delete the conversation itself
-        const { data: convData, error: convDeleteError } = await supabase
-            .from('conversations')
-            .delete()
-            .eq('id', conversationId)
-            .select()
-            .single();
-
-        if (convDeleteError) {
-            console.error(`Error deleting conversation ${conversationId}:`, convDeleteError.message);
-            throw new Error(`Failed to delete conversation: ${convDeleteError.message}`);
-        }
-
-        if (!convData) {
-            return res.status(404).json({ message: 'Conversation not found.' });
-        }
-
-        res.status(200).json({ 
-            message: `Conversation (ID: ${conversationId}) and its messages deleted successfully.`,
-            deletedConversation: convData
-        });
-
-    } catch (error) {
-        console.error(`Error in delete conversation endpoint for ID ${conversationId}:`, error);
-        res.status(500).json({ error: error.message || 'Internal server error during conversation deletion.' });
-    }
-});
-
-// Mount the admin router under /api/admin
-app.use('/api/admin', adminRouter); // Re-enabled admin API routes
-
-// --- Image Upload Route ---
-app.post('/api/chat/upload', imageUpload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No image file provided.' });
-    }
-    if (!supabaseServiceKey) {
-        return res.status(500).json({ error: 'File uploads are not configured on the server (missing service key).' });
-    }
-
-    try {
-        const fileName = `${crypto.randomBytes(16).toString('hex')}${path.extname(req.file.originalname)}`;
-        const filePath = `chat_images/${fileName}`; // Define a path/bucket in Supabase Storage
-
-        const { data, error: uploadError } = await supabase.storage
-            .from('momi-uploads') // Make sure this bucket exists in your Supabase Storage and has appropriate policies
-            .upload(filePath, req.file.buffer, {
-                contentType: req.file.mimetype,
-                upsert: false
-            });
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL (ensure your bucket has appropriate RLS for public reads or create signed URLs)
-        const { data: publicUrlData } = supabase.storage
-            .from('momi-uploads')
-            .getPublicUrl(filePath);
-
-        if (!publicUrlData || !publicUrlData.publicUrl) {
-            throw new Error('Could not get public URL for uploaded image.');
-        }
-        
-        res.json({ imageUrl: publicUrlData.publicUrl, filePath: data.path });
-
-    } catch (error) {
-        console.error('Error uploading image to Supabase. Full error object:', JSON.stringify(error, null, 2));
-        let errorDetails = error.message;
-        if (error.data && error.data.message) { // Supabase specific error structure
-            errorDetails = error.data.message;
-        } else if (error.response && error.response.data && error.response.data.message) { // Axios-like error structure
-            errorDetails = error.response.data.message;
-        }
-        console.error('Extracted error details for response:', errorDetails);
-        res.status(500).json({ error: 'Failed to upload image', details: errorDetails });
-    }
-});
-
-// --- Speech-to-Text Route ---
-app.post('/api/chat/speech-to-text', audioUpload.single('audio'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No audio file provided.' });
-    }
-    try {
-        // req.file.path is where multer saved the audio file
-        const transcription = await openai.audio.transcriptions.create({
-            model: "whisper-1",
-            file: fs.createReadStream(req.file.path),
-            language: "en" // Specify English language
-        });
-
-        // Clean up the temporarily saved audio file
-        fs.unlink(req.file.path, (err) => {
-            if (err) console.error("Error deleting temporary audio file:", err);
-        });
-
-        res.json({ transcript: transcription.text });
-
-    } catch (error) {
-        console.error('Error with OpenAI speech-to-text:', error);
-        // Clean up file even on error
-        if (req.file && req.file.path) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error("Error deleting temporary audio file after error:", err);
-            });
-        }
-        res.status(500).json({ error: 'Speech-to-text transcription failed', details: error.message });
-    }
-});
-
-// --- Guest User Routes ---
-app.post('/api/guest/session', async (req, res) => {
-    try {
-        const sessionToken = crypto.randomBytes(32).toString('hex');
-        const { data, error } = await supabase
-            .from('guest_users')
-            .insert([{ session_token: sessionToken }])
-            .select()
-            .single();
-
-        if (error) throw error;
-        res.json({ guestUserId: data.id, sessionToken: data.session_token });
-    } catch (error) {
-        console.error('Error creating guest session:', error);
-        res.status(500).json({ error: 'Could not create guest session', details: error.message });
-    }
-});
-
-// --- Auth Routes (interfacing with Supabase Auth) ---
-// Note: Actual user registration/login should primarily happen on the client-side using supabase-js,
-// which securely handles auth with Supabase. These backend routes are for any server-side logic
-// needed post-authentication or for creating corresponding records in your public.users table.
-
-app.post('/api/auth/register', async (req, res) => {
-    const { email, auth_user_id, profileData } = req.body;
-    if (!email || !auth_user_id) {
-        return res.status(400).json({ error: 'Email and auth_user_id are required.' });
-    }
-
-    try {
-        // 1. Create user in Supabase Auth (typically client-side, but can be admin action)
-        // For this example, we assume client handles Supabase Auth user creation.
-        // This endpoint is more about creating the corresponding public.users record.
-        // Or, if you have a valid session JWT from the client, you can get the user.
-        
-        // Example: if you were to create a user from backend (requires admin privileges usually)
-        // const { data: authData, error: authError } = await supabase.auth.admin.createUser({ email, password });
-        // if (authError) throw authError;
-        // const authUserId = authData.user.id;
-
-        // For now, let's assume we receive auth_user_id after client-side registration
-        if (!auth_user_id) {
-             return res.status(400).json({ error: 'auth_user_id is required after client-side Supabase registration.' })
-        }
-
-        // 2. Create user in our public.users table
-        const { data: publicUser, error: publicUserError } = await supabase
-            .from('users')
-            .insert([{ auth_user_id, email, profile_data: profileData || {} }])
-            .select()
-            .single();
-
-        if (publicUserError) throw publicUserError;
-
-        res.status(201).json({ message: 'User profile created successfully', user: publicUser });
-
-    } catch (error) {
-        console.error('Error in user registration synchronization:', error);
-        res.status(500).json({ error: 'User registration synchronization failed', details: error.message });
-    }
-});
-
-// --- Chat Routes ---
-app.post('/api/chat/message', async (req, res) => {
-    const { conversationId, message, userId, guestUserId: initialGuestUserId, imageUrl } = req.body;
-    let currentConversationId = conversationId;
-    let currentGuestUserId = initialGuestUserId;
-    let newGuestCreated = false;
-
-    if (!message && !imageUrl) {
-        return res.status(400).json({ error: 'Message or image URL is required.' });
-    }
-    if (!userId && !currentGuestUserId) {
-        return res.status(400).json({ error: 'User ID or Guest User ID is required.' });
-    }
-
-    try {
-        // Validate or create guest user if guestUserId is provided
-        if (currentGuestUserId && !userId) {
-            const { data: existingGuest, error: guestCheckError } = await supabase
-                .from('guest_users')
-                .select('id')
-                .eq('id', currentGuestUserId)
-                .single();
-
-            if (guestCheckError || !existingGuest) {
-                console.warn(`Guest user ${currentGuestUserId} not found or error checking. Creating a new one. Error: ${guestCheckError?.message}`);
-                // Create a new guest session
-                const sessionToken = crypto.randomBytes(32).toString('hex');
-                const { data: newGuest, error: newGuestError } = await supabase
-                    .from('guest_users')
-                    .insert([{ session_token: sessionToken }])
-                    .select('id, session_token')
-                    .single();
-                
-                if (newGuestError) {
-                    console.error('Failed to create a new guest user fallback:', newGuestError);
-                    throw new Error('Failed to establish a valid guest session.');
-                }
-                currentGuestUserId = newGuest.id;
-                newGuestCreated = true; // Flag that a new guest was created
-                console.log('Created new fallback guest session:', { guestUserId: newGuest.id });
-            }
-        }
-
-        // 1. Create conversation if it doesn't exist
-        if (!currentConversationId) {
-            // Use the potentially updated currentGuestUserId
-            const convPayload = userId ? { user_id: userId } : { guest_user_id: currentGuestUserId };
-            const { data: newConversation, error: convError } = await supabase
-                .from('conversations')
-                .insert([convPayload])
-                .select('id')
-                .single();
-            if (convError) throw convError;
-            currentConversationId = newConversation.id;
-        }
-
-        // 2. Store user's message
-        const userMessagePayload = {
-            conversation_id: currentConversationId,
-            sender_type: 'user',
-            content_type: imageUrl ? 'image_url' : 'text',
-            content: imageUrl ? imageUrl : message,
-            metadata: imageUrl ? { original_user_prompt: message, is_image_request: true } : {}
-        };
-        const { error: userMessageError } = await supabase.from('messages').insert([userMessagePayload]);
-        if (userMessageError) throw userMessageError;
-
-        // RAG: Retrieve relevant context based on the user's message
-        let ragContext = '';
-        if (message && !imageUrl) { // Only do RAG for text messages for now
-            try {
-                const queryEmbedding = await getEmbedding(message);
-                const { data: chunks, error: matchError } = await supabase.rpc('match_document_chunks', {
-                    query_embedding: queryEmbedding,
-                    match_threshold: 0.75, // Adjust as needed
-                    match_count: 3       // Adjust as needed
-                });
-
-                if (matchError) console.error("Error matching document chunks:", matchError.message);
-                
-                if (chunks && chunks.length > 0) {
-                    ragContext = chunks.map(chunk => chunk.chunk_text).join("\n\n---\n\n");
-                    console.log("Retrieved RAG context:", ragContext.substring(0,200) + "...");
-                }
-            } catch (ragError) {
-                console.error("Error during RAG retrieval:", ragError.message);
-            }
-        }
-
-        // 3. Prepare context for OpenAI (fetch recent messages)
-        const { data: recentMessages, error: historyError } = await supabase
-            .from('messages')
-            .select('sender_type, content, content_type, metadata')
-            .eq('conversation_id', currentConversationId)
-            .order('timestamp', { ascending: true })
-            .limit(10); // Keep context window manageable
-        if (historyError) throw historyError;
-
-        const momiBasePrompt = await getMomiBasePrompt();
-        let systemPrompt = momiBasePrompt;
-        if (ragContext) {
-            systemPrompt = `You are MOMi, a friendly and empathetic assistant. Relevant information from documents: \n${ragContext}\n\nBased on this information and your general knowledge, please answer the user\'s question. If the information isn\'t relevant, rely on your general knowledge. Original base prompt: ${momiBasePrompt}`;
-        }
-
-        // Map historical messages to OpenAI format, converting past images to text placeholders
-        const historicalOpenAIMessages = recentMessages.map(msg => {
-            let openAiMsgContent;
-            if (msg.content_type === 'image_url') {
-                // Represent historical images as text placeholders
-                openAiMsgContent = `[User sent an image: ${msg.metadata?.original_user_prompt || 'User uploaded an image.'}]`;
-            } else {
-                openAiMsgContent = msg.content; // Text message from history or MOMi
-            }
-            return {
-                role: msg.sender_type === 'momi' ? 'assistant' : 'user',
-                content: openAiMsgContent
-            };
-        });
-
-        const openAIMessages = [
-            { role: "system", content: systemPrompt },
-            ...historicalOpenAIMessages
-        ];
-
-        // Add current user's message (text and/or image) as the last message
-        let currentUserMessageContent = [];
-        if (imageUrl) { // Current message includes an image
-            try {
-                const dataUri = await imageUrlToDataUri(imageUrl);
-                currentUserMessageContent.push({ type: "image_url", image_url: { url: dataUri } });
-                // Add the text part of the message if it exists
-                if (message) {
-                    currentUserMessageContent.push({ type: "text", text: message });
-                } else {
-                    // If only image is sent, add a default text part if your model requires it
-                    // or ensure your logic handles image-only inputs if supported.
-                    // For gpt-4o, it's good practice to have a text part, even if minimal.
-                    currentUserMessageContent.push({ type: "text", text: "Describe this image." });
-                }
-            } catch (conversionError) {
-                console.error("Error converting current user image to data URI:", conversionError.message);
-                // Fallback: send text message indicating image error
-                const fallbackText = message ? `[Image upload failed] ${message}` : "[Image upload failed]";
-                currentUserMessageContent.push({ type: "text", text: fallbackText });
-            }
-        } else if (message) { // Current message is text-only
-            currentUserMessageContent.push({ type: "text", text: message });
-        }
-        
-        // Only add user message if there's content for it
-        if (currentUserMessageContent.length > 0) {
-            // If image was processed, content is an array. If only text, it should be a string.
-            // GPT-4o (and vision models) expect the 'content' for image messages to be an array.
-            // For text-only messages, 'content' should be a string.
-            if (imageUrl && currentUserMessageContent.some(part => part.type === 'image_url')) {
-                 openAIMessages.push({ role: "user", content: currentUserMessageContent });
-            } else if (message) { // Text only, ensure content is a string
-                 openAIMessages.push({ role: "user", content: message });
-            }
-        }
-        
-        console.log("Sending to OpenAI. Last user message content parts:", JSON.stringify(currentUserMessageContent, null, 2));
-
-        // 4. Call OpenAI API
-        const completion = await openai.chat.completions.create({
-            model: imageUrl ? "gpt-4o" : "gpt-3.5-turbo",
-            messages: openAIMessages,
-            max_tokens: imageUrl ? 500 : (ragContext ? 400 : 150) 
-        });
-
-        const momiResponseText = completion.choices[0].message.content;
-
-        // 5. Store MOMi's response
-        const momiMessagePayload = {
-            conversation_id: currentConversationId,
-            sender_type: 'momi',
-            content_type: 'text',
-            content: momiResponseText,
-            openai_message_id: completion.id
-        };
-        const { error: momiMessageError } = await supabase.from('messages').insert([momiMessagePayload]);
-        if (momiMessageError) throw momiMessageError;
-
-        const responsePayload = { 
-            reply: momiResponseText, 
-            conversationId: currentConversationId 
-        };
-
-        if (newGuestCreated && currentGuestUserId) {
-            // If a new guest was created, we need to send back the new guestUserId and sessionToken
-            // The client needs the sessionToken to store it, although for this specific flow, only guestUserId is used by /api/chat/message
-            // Fetching the session_token for the newly created guest to be complete
-             const { data: guestDetails, error: guestDetailError } = await supabase
-                .from('guest_users')
-                .select('session_token')
-                .eq('id', currentGuestUserId)
-                .single();
-
-            if (guestDetailError || !guestDetails) {
-                console.error('Could not retrieve session token for newly created guest:', currentGuestUserId, guestDetailError);
-                // Not critical for chat to continue, but client won't be able to update localStorage correctly
-            } else {
-                 responsePayload.newGuestSession = {
-                    guestUserId: currentGuestUserId,
-                    sessionToken: guestDetails.session_token 
-                };
-            }
-        }
-
-        res.json(responsePayload);
-
-    } catch (error) {
-        console.error('Error processing chat message:', error);
-        res.status(500).json({ error: 'Failed to process chat message', details: error.message });
-    }
-});
-
-app.get('/api/chat/history/:conversationId', async (req, res) => {
-    const { conversationId } = req.params;
-    // TODO: Add authentication/authorization to ensure user can only access their own history
-    try {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', conversationId)
-            .order('timestamp', { ascending: true });
-        if (error) throw error;
-        res.json(data);
-    } catch (error) {
-        console.error('Error fetching chat history:', error);
-        res.status(500).json({ error: 'Failed to fetch chat history', details: error.message });
-    }
-});
-
-// New route for the full-page chat widget
-app.get('/widget/fullpage', (req, res) => {
-    // We assume fullpage.html is in the same directory as index.js
-    res.sendFile(path.join(__dirname, 'fullpage.html'));
-});
-
-// --- Root and Test Routes (keep for basic checks) ---
-app.get('/', (req, res) => {
-    res.send('MOMi Backend is running!');
-});
+// --- Root and Catch-all Routes ---
 app.get('/api/test', (req, res) => {
-    res.json({ message: 'Test route is working! Supra client: ' + (supabase ? 'OK' : 'FAIL') + ', OpenAI client: ' + (openai ? 'OK' : 'FAIL'), serviceKeySet: !!supabaseServiceKey });
+    res.json({ message: 'Test route is working' });
+});
+
+// IMPORTANT: This must be the LAST route so it doesn't override API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(landingPath, 'index.html'));
 });
 
 app.listen(port, '0.0.0.0', () => {
     console.log(`Server listening at http://0.0.0.0:${port}`);
-}); 
+});

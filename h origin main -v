@@ -1,0 +1,5 @@
+[33mfa926d7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Assistant checkpoint: Update MOMi greeting messages
+[33m5a3175e[m Checkpoint before assistant change: Improve chat system by creating guest users and updating session details
+[33m2011dfc[m Remove temporary Supabase client logs
+[33m7b60ed2[m Add temporary Supabase client logs for deployment debugging
+[33m72b2ef9[m Checkpoint before assistant change: Relate documents to knowledge base instead of the manage documents section
