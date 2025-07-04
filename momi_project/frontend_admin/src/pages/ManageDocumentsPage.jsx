@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { supabase } from '../supabaseClient'; // Assuming supabase client is set up for auth token
+import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'; // Add icons import
 import './ManageDocumentsPage.css';
 
 const ManageDocumentsPage = () => {
@@ -165,6 +166,7 @@ const ManageDocumentsPage = () => {
                   <th>Type</th>
                   <th>Uploaded At</th>
                   <th>Last Indexed</th>
+                  <th>Indexed</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -175,6 +177,13 @@ const ManageDocumentsPage = () => {
                     <td data-label="Type">{doc.file_type}</td>
                     <td data-label="Uploaded At">{new Date(doc.uploaded_at).toLocaleString()}</td>
                     <td data-label="Last Indexed">{doc.last_indexed_at ? new Date(doc.last_indexed_at).toLocaleString() : 'Never'}</td>
+                    <td data-label="Indexed" className="indexed-status">
+                      {doc.last_indexed_at ? (
+                        <FaCheckCircle className="indexed-icon indexed-yes" title="Document is indexed" />
+                      ) : (
+                        <FaTimesCircle className="indexed-icon indexed-no" title="Document not indexed" />
+                      )}
+                    </td>
                     <td data-label="Actions" className="actions-cell">
                       <button 
                         onClick={() => handleDeleteDocument(doc.id, doc.file_name)} 

@@ -10,7 +10,8 @@ RETURNS TABLE (             -- Defines the columns of the returned table
   id UUID,
   document_id UUID,
   chunk_text TEXT,
-  similarity float
+  similarity float,
+  metadata JSONB           -- Add metadata to return values
 )
 LANGUAGE plpgsql
 AS $$
@@ -20,8 +21,9 @@ BEGIN
     dc.id,
     dc.document_id,
     dc.chunk_text,
-    1 - (dc.embedding <=> query_embedding) AS similarity -- Cosine distance (1 - cosine_similarity)
+    1 - (dc.embedding <=> query_embedding) AS similarity, -- Cosine distance (1 - cosine_similarity)
                                                       -- pgvector returns distance, so 1 - distance for similarity
+    dc.metadata             -- Include metadata in results
   FROM
     document_chunks dc
   WHERE 1 - (dc.embedding <=> query_embedding) > match_threshold

@@ -41,7 +41,7 @@ const ChatWindow = ({ messages, onSendMessage, isSending, error, onClose, isWind
       </div>
       {error && <p className="chat-error-message">{error}</p>}
       <MessageList messages={messages} isLoading={isSending && messages.length === 0} />
-      <MessageInput onSendMessage={onSendMessage} isLoading={isSending} />
+      <MessageInput onSendMessage={onSendMessage} isLoading={isSending} messages={messages} />
       <div className="chat-disclaimer">
         <p>MOMi is an AI Chatbot. Information provided is not a substitute for professional medical advice. Always consult with a qualified healthcare provider for any health concerns.</p>
       </div>

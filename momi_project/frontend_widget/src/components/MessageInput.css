@@ -20,10 +20,20 @@
   border: none; /* Remove border, rely on background and shadow */
   background-color: var(--momi-input-field-background, #F4F6F8); /* Light gray background */
   border-radius: 20px; /* Pill shape */
-  font-size: 0.95em; /* Slightly larger font for readability */
+  font-size: 16px; /* Use 16px to prevent zoom on iOS */
   line-height: 1.4;
   outline: none;
   color: var(--momi-text-dark, #333333);
+  -webkit-appearance: none; /* Remove default iOS styling */
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Ensure font-size stays at 16px on mobile to prevent zoom */
+@media (max-width: 768px) {
+  .text-input {
+    font-size: 16px !important;
+  }
 }
 
 .text-input::placeholder {

@@ -10,6 +10,40 @@ const pdf = require('pdf-parse'); // For PDF text extraction
 const authAdmin = require('./middleware/authAdmin'); // Import admin auth middleware
 const axios = require('axios'); // Added for image URL to Data URI conversion
 const cors = require('cors'); // <-- ADD THIS LINE
+const conversationState = require('./utils/conversationState'); // Import conversation state manager
+const { startQuiz, answerQuiz, getQuizStatus } = require('./controllers/quiz'); // Import quiz controllers
+
+// --- Bloque de saludos y emojis de MOMi ---
+const FIRST_SECOND_TIME_GREETINGS = [
+  "Hi there, I'm really glad you're here. How can I help you or your family today? 😊",
+  "Hello, it's nice to meet you. Is there anything on your mind you'd like to talk about?",
+  "Hi, welcome! How are you doing today? Anything you need support with?",
+  "Hello, so happy you stopped by. Is there something you'd like a hand with right now?",
+  "Hi, I hope your day is going well. Let me know how I can help."
+];
+
+const RETURNING_GREETINGS = [
+  "Hey sweetie, how's today treating you? Need anything, or just want to chat? 💛",
+  "Hi love, how are things? Is there something you want to share today?",
+  "Hey, it's always good to connect. How are you and the kiddos?",
+  "Hi mama, hope your day's going smoothly. What's up?",
+  "Hey there, I'm here for you—what's on your heart today? 😊"
+];
+
+const TIME_OF_DAY_GREETINGS = [
+  "Good morning, love. How did you sleep? Is there anything you want to talk through today? 🌞",
+  "Hi there, hope your afternoon's going okay. Anything I can help you with right now?",
+  "Evening, sweetie. How was your day? Want to unwind or talk something out? 🌙"
+];
+
+const SITUATION_SPECIFIC_GREETINGS = [
+  "Hi love, need any quick dinner ideas or just a bit of encouragement today?",
+  "Hey mama, looking for some stress relief tips or family routine ideas?",
+  "Hello, is there anything about meal planning or the kids' routines on your mind?",
+  "Hi, if you've got questions about balancing work and family, I'm here to help."
+];
+
+const GENTLE_EMOJIS = ["😊", "💛", "🌞", "🌙"];
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -224,6 +258,104 @@ async function getEmbedding(text) {
     }
 }
 
+// --- Greeting Helper Functions ---
+/**
+ * Determines the time of day based on the current date
+ * @returns {string} "morning" (5am-11:59am), "afternoon" (12pm-4:59pm), or "evening" (5pm-4:59am)
+ */
+function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "morning";
+    if (hour >= 12 && hour < 17) return "afternoon"; 
+    return "evening";
+}
+
+/**
+ * Picks a random greeting from a pool that hasn't been shown yet in this session
+ * @param {Array<string>} pool - Array of greeting strings
+ * @param {Object} state - Conversation state object with greetings_shown array
+ * @returns {string} A greeting that hasn't been shown yet
+ */
+function pickGreeting(pool, state) {
+    // Filter out greetings that have already been shown
+    const availableGreetings = pool.filter(g => !state.greetings_shown.includes(g));
+    
+    // If all greetings have been shown, reset and use the full pool
+    if (availableGreetings.length === 0) {
+        state.greetings_shown = [];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+    
+    // Pick a random greeting from available ones
+    return availableGreetings[Math.floor(Math.random() * availableGreetings.length)];
+}
+
+/**
+ * Selects an appropriate greeting based on user status and context
+ * @param {Object} state - Conversation state object
+ * @param {string} context - Optional context about the conversation
+ * @returns {string} The selected greeting with emoji
+ */
+function selectGreeting(state, context = null) {
+    let greeting;
+    let pool;
+
+    // 10% chance for time-based greeting
+    if (Math.random() < 0.1) {
+        const timeOfDay = getTimeOfDay();
+        greeting = TIME_OF_DAY_GREETINGS[timeOfDay === "morning" ? 0 : timeOfDay === "afternoon" ? 1 : 2];
+        pool = TIME_OF_DAY_GREETINGS;
+    }
+    // 15% chance for situation-specific greeting
+    else if (Math.random() < 0.15 && state.user_status === 'returning') {
+        pool = SITUATION_SPECIFIC_GREETINGS;
+        greeting = pickGreeting(pool, state);
+    }
+    // Otherwise, use status-based greeting
+    else {
+        if (state.user_status === 'first_time' || state.user_status === 'second_time') {
+            pool = FIRST_SECOND_TIME_GREETINGS;
+        } else {
+            pool = RETURNING_GREETINGS;
+        }
+        greeting = pickGreeting(pool, state);
+    }
+
+    // Add emoji if greeting doesn't already have one
+    if (!GENTLE_EMOJIS.some(emoji => greeting.includes(emoji))) {
+        const randomEmoji = GENTLE_EMOJIS[Math.floor(Math.random() * GENTLE_EMOJIS.length)];
+        greeting = `${greeting} ${randomEmoji}`;
+    }
+
+    return greeting;
+}
+
+/**
+ * Determines user status based on conversation history
+ * @param {string} userId - User ID or Guest User ID
+ * @returns {Promise<string>} "first_time", "second_time", or "returning"
+ */
+async function determineUserStatus(userId) {
+    try {
+        const { count, error } = await supabase
+            .from('conversations')
+            .select('*', { count: 'exact', head: true })
+            .or(`user_id.eq.${userId},guest_user_id.eq.${userId}`);
+        
+        if (error) {
+            console.error('Error determining user status:', error);
+            return 'first_time'; // Default to first_time on error
+        }
+
+        if (count === 0) return 'first_time';
+        if (count === 1) return 'second_time';
+        return 'returning';
+    } catch (error) {
+        console.error('Error in determineUserStatus:', error);
+        return 'first_time';
+    }
+}
+
 // --- Admin Routes (Protected by authAdmin middleware) ---
 const adminRouter = express.Router();
 adminRouter.use(authAdmin); // Apply admin auth middleware to all routes in adminRouter
@@ -253,29 +385,73 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
 
         const chunks = chunkText(textContent, 1500, 150);
         let processedChunks = 0;
-        for (const chunk of chunks) {
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+            const chunk = chunks[chunkIndex];
             if (chunk.trim().length < 10) continue;
             try {
                 const embedding = await getEmbedding(chunk);
+                
+                // Prepare metadata for better traceability
+                const chunkMetadata = {
+                    fileName: req.file.originalname,
+                    chunkIndex: chunkIndex,
+                    totalChunks: chunks.length,
+                    chunkSize: chunk.length,
+                    fileType: fileType
+                };
+                
+                // Add page information for PDFs if we can extract it
+                // Note: pdf-parse doesn't provide page-level extraction by default
+                // This is a placeholder for future enhancement
+                if (fileType === 'pdf') {
+                    chunkMetadata.page = 'N/A'; // Would need enhanced PDF parsing for accurate page numbers
+                }
+                
                 const { error: chunkError } = await supabase
                     .from('document_chunks')
-                    .insert({ document_id: documentId, chunk_text: chunk, embedding: embedding });
+                    .insert({ 
+                        document_id: documentId, 
+                        chunk_text: chunk, 
+                        embedding: embedding,
+                        metadata: chunkMetadata // Add metadata
+                    });
                 if (chunkError) {
-                    console.error(`Failed to store chunk for doc ${documentId}:`, chunkError.message);
+                    console.error(`Failed to store chunk ${chunkIndex} for doc ${documentId}:`, chunkError.message);
                     continue;
                 }
                 processedChunks++;
+                
+                // Log progress for large documents
+                if (processedChunks % 10 === 0 && chunks.length > 20) {
+                    console.log(`Progress: Processed ${processedChunks}/${chunks.length} chunks for ${req.file.originalname}`);
+                }
             } catch(embeddingError){
-                 console.error(`Failed to get embedding for a chunk of doc ${documentId}:`, embeddingError.message);
+                 console.error(`Failed to get embedding for chunk ${chunkIndex} of doc ${documentId}:`, embeddingError.message);
             }
         }
         
         await supabase.from('knowledge_base_documents').update({ last_indexed_at: new Date().toISOString() }).eq('id', documentId);
 
+        // Enhanced logging for debugging
+        console.log(`Document ingestion completed:`, {
+            fileName: req.file.originalname,
+            fileType: fileType,
+            documentId: documentId,
+            totalChunks: chunks.length,
+            processedChunks: processedChunks,
+            failedChunks: chunks.length - processedChunks,
+            timestamp: new Date().toISOString()
+        });
+
         res.status(201).json({ 
             message: `Document uploaded and processed. ${processedChunks} chunks created.`, 
             documentId: documentId,
-            fileName: req.file.originalname
+            fileName: req.file.originalname,
+            stats: {
+                totalChunks: chunks.length,
+                processedChunks: processedChunks,
+                failedChunks: chunks.length - processedChunks
+            }
         });
     } catch (error) {
         console.error('Error processing RAG document:', error);
@@ -947,6 +1123,75 @@ app.post('/api/chat/message', async (req, res) => {
             }
         }
 
+        // Get user identifier for conversation state
+        const userIdentifier = userId || currentGuestUserId;
+        
+        // Get conversation state
+        const state = conversationState.getState(userIdentifier);
+        
+        // Check if user wants to start the quiz
+        if (message && message.toLowerCase().trim() === 'start nervous system quiz') {
+            // Redirect to quiz start
+            const quizReq = { body: { userId, guestUserId: currentGuestUserId } };
+            const quizRes = {
+                json: (data) => res.json(data),
+                status: (code) => ({
+                    json: (data) => res.status(code).json(data)
+                })
+            };
+            return startQuiz(quizReq, quizRes);
+        }
+        
+        // Check if user is in quiz and sending an answer
+        if (state.quiz && state.quiz.phase === 'question' && message && /^[ABC]$/i.test(message.trim())) {
+            // Redirect to quiz answer
+            const quizReq = { 
+                body: { 
+                    userId, 
+                    guestUserId: currentGuestUserId,
+                    choice: message.trim().toUpperCase()
+                } 
+            };
+            const quizRes = {
+                json: (data) => res.json(data),
+                status: (code) => ({
+                    json: (data) => res.status(code).json(data)
+                })
+            };
+            return answerQuiz(quizReq, quizRes);
+        }
+        
+        // Determine user status if not set
+        if (state.user_status === 'first_time' && !state.is_first_message) {
+            // This means state exists but user_status might need updating
+            state.user_status = await determineUserStatus(userIdentifier);
+            conversationState.updateState(userIdentifier, { user_status: state.user_status });
+        }
+
+        // Handle first message greeting
+        let finalUserMessage = message;
+        if (state.is_first_message && !imageUrl) { // Only add greeting for text messages
+            const greeting = selectGreeting(state, message);
+            
+            // Concatenate greeting with user message
+            finalUserMessage = greeting + "\n\n" + message;
+            
+            // Update state
+            conversationState.updateState(userIdentifier, {
+                is_first_message: false,
+                greetings_shown: [...state.greetings_shown, greeting],
+                previous_greeting: greeting,
+                last_context: message
+            });
+            
+            console.log(`First message greeting for ${userIdentifier}: ${greeting}`);
+        } else {
+            // Update context for non-first messages
+            conversationState.updateState(userIdentifier, {
+                last_context: message
+            });
+        }
+
         // 1. Create conversation if it doesn't exist
         if (!currentConversationId) {
             // Use the potentially updated currentGuestUserId
@@ -965,7 +1210,7 @@ app.post('/api/chat/message', async (req, res) => {
             conversation_id: currentConversationId,
             sender_type: 'user',
             content_type: imageUrl ? 'image_url' : 'text',
-            content: imageUrl ? imageUrl : message,
+            content: imageUrl ? imageUrl : message, // Store original message, not with greeting
             metadata: imageUrl ? { original_user_prompt: message, is_image_request: true } : {}
         };
         const { error: userMessageError } = await supabase.from('messages').insert([userMessagePayload]);
@@ -973,20 +1218,67 @@ app.post('/api/chat/message', async (req, res) => {
 
         // RAG: Retrieve relevant context based on the user's message
         let ragContext = '';
+        let ragSources = [];
         if (message && !imageUrl) { // Only do RAG for text messages for now
             try {
                 const queryEmbedding = await getEmbedding(message);
                 const { data: chunks, error: matchError } = await supabase.rpc('match_document_chunks', {
                     query_embedding: queryEmbedding,
-                    match_threshold: 0.75, // Adjust as needed
-                    match_count: 3       // Adjust as needed
+                    match_threshold: 0.82, // Increased threshold for better relevance
+                    match_count: 5       // Get more chunks to pick the best
                 });
 
                 if (matchError) console.error("Error matching document chunks:", matchError.message);
                 
                 if (chunks && chunks.length > 0) {
-                    ragContext = chunks.map(chunk => chunk.chunk_text).join("\n\n---\n\n");
-                    console.log("Retrieved RAG context:", ragContext.substring(0,200) + "...");
+                    // Sort by similarity and take top 3
+                    const topChunks = chunks.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
+                    
+                    // Enhanced debug logging with metadata
+                    console.debug('RAG Query:', message);
+                    console.debug(`Found ${chunks.length} chunks, using top 3:`);
+                    topChunks.forEach((chunk, idx) => {
+                        const metadata = chunk.metadata || {};
+                        console.debug(`\n${idx + 1}. Chunk Info:`);
+                        console.debug(`   - Similarity: ${chunk.similarity.toFixed(4)}`);
+                        console.debug(`   - File: ${metadata.fileName || 'Unknown'}`);
+                        console.debug(`   - Chunk Index: ${metadata.chunkIndex !== undefined ? metadata.chunkIndex : 'N/A'}`);
+                        console.debug(`   - Total Chunks: ${metadata.totalChunks || 'N/A'}`);
+                        console.debug(`   - Preview: "${chunk.chunk_text.substring(0, 100)}..."`);
+                    });
+                    
+                    // Fetch document names for source attribution
+                    const docIds = [...new Set(topChunks.map(c => c.document_id))];
+                    const { data: docs } = await supabase
+                        .from('knowledge_base_documents')
+                        .select('id, file_name')
+                        .in('id', docIds);
+                    
+                    const docMap = docs ? Object.fromEntries(docs.map(d => [d.id, d.file_name])) : {};
+                    
+                    // Build context with source comments and metadata
+                    ragContext = topChunks.map((chunk, idx) => {
+                        const fileName = docMap[chunk.document_id] || 'Unknown Document';
+                        const metadata = chunk.metadata || {};
+                        
+                        // Create more detailed source comment
+                        let sourceComment = `<!-- Source: ${fileName}`;
+                        if (metadata.chunkIndex !== undefined) {
+                            sourceComment += ` (Chunk ${metadata.chunkIndex + 1}/${metadata.totalChunks || '?'})`;
+                        }
+                        if (metadata.page && metadata.page !== 'N/A') {
+                            sourceComment += ` Page: ${metadata.page}`;
+                        }
+                        sourceComment += ` -->`;
+                        
+                        return `${sourceComment}\n${chunk.chunk_text}`;
+                    }).join("\n\n---\n\n");
+                    
+                    ragSources = topChunks.map(chunk => ({
+                        fileName: docMap[chunk.document_id] || 'Unknown',
+                        similarity: chunk.similarity,
+                        metadata: chunk.metadata || {}
+                    }));
                 }
             } catch (ragError) {
                 console.error("Error during RAG retrieval:", ragError.message);
@@ -1002,10 +1294,13 @@ app.post('/api/chat/message', async (req, res) => {
             .limit(10); // Keep context window manageable
         if (historyError) throw historyError;
 
+        // Get MOMI system prompt
         const momiBasePrompt = await getMomiBasePrompt();
+        
+        // Build system prompt with RAG context if available
         let systemPrompt = momiBasePrompt;
         if (ragContext) {
-            systemPrompt = `You are MOMi, a friendly and empathetic assistant. Relevant information from documents: \n${ragContext}\n\nBased on this information and your general knowledge, please answer the user\'s question. If the information isn\'t relevant, rely on your general knowledge. Original base prompt: ${momiBasePrompt}`;
+            systemPrompt = `${momiBasePrompt}\n\nRelevant information from knowledge base:\n${ragContext}\n\nUse this information to provide accurate and helpful responses when relevant.`;
         }
 
         // Map historical messages to OpenAI format, converting past images to text placeholders
@@ -1023,6 +1318,7 @@ app.post('/api/chat/message', async (req, res) => {
             };
         });
 
+        // IMPORTANT: Always start with system prompt
         const openAIMessages = [
             { role: "system", content: systemPrompt },
             ...historicalOpenAIMessages
@@ -1049,8 +1345,8 @@ app.post('/api/chat/message', async (req, res) => {
                 const fallbackText = message ? `[Image upload failed] ${message}` : "[Image upload failed]";
                 currentUserMessageContent.push({ type: "text", text: fallbackText });
             }
-        } else if (message) { // Current message is text-only
-            currentUserMessageContent.push({ type: "text", text: message });
+        } else if (finalUserMessage) { // Current message is text-only (use finalUserMessage which includes greeting if first message)
+            currentUserMessageContent.push({ type: "text", text: finalUserMessage });
         }
         
         // Only add user message if there's content for it
@@ -1060,12 +1356,15 @@ app.post('/api/chat/message', async (req, res) => {
             // For text-only messages, 'content' should be a string.
             if (imageUrl && currentUserMessageContent.some(part => part.type === 'image_url')) {
                  openAIMessages.push({ role: "user", content: currentUserMessageContent });
-            } else if (message) { // Text only, ensure content is a string
-                 openAIMessages.push({ role: "user", content: message });
+            } else if (finalUserMessage) { // Text only, ensure content is a string
+                 openAIMessages.push({ role: "user", content: finalUserMessage });
             }
         }
         
-        console.log("Sending to OpenAI. Last user message content parts:", JSON.stringify(currentUserMessageContent, null, 2));
+        console.log("Sending to OpenAI. System prompt included: ", systemPrompt.substring(0, 100) + "...");
+        if (ragSources.length > 0) {
+            console.log("RAG sources used:", ragSources);
+        }
 
         // 4. Call OpenAI API
         const completion = await openai.chat.completions.create({
@@ -1138,6 +1437,45 @@ app.get('/api/chat/history/:conversationId', async (req, res) => {
     }
 });
 
+// Reset session endpoint
+app.post('/api/reset-session', async (req, res) => {
+    const { userId, guestUserId } = req.body;
+    
+    if (!userId && !guestUserId) {
+        return res.status(400).json({ error: 'User ID or Guest User ID is required.' });
+    }
+    
+    const userIdentifier = userId || guestUserId;
+    
+    try {
+        // Reset the conversation state
+        const wasReset = conversationState.resetState(userIdentifier);
+        
+        if (wasReset) {
+            console.log(`Session reset for user: ${userIdentifier}`);
+            res.json({ 
+                success: true, 
+                message: 'Session state has been reset successfully.',
+                userId: userIdentifier 
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                message: 'No active session found to reset.',
+                userId: userIdentifier 
+            });
+        }
+    } catch (error) {
+        console.error('Error resetting session:', error);
+        res.status(500).json({ error: 'Failed to reset session', details: error.message });
+    }
+});
+
+// --- Quiz Routes ---
+app.post('/api/quiz/start', startQuiz);
+app.post('/api/quiz/answer', answerQuiz);
+app.post('/api/quiz/status', getQuizStatus);
+
 // New route for the full-page chat widget
 app.get('/widget/fullpage', (req, res) => {
     // We assume fullpage.html is in the same directory as index.js
@@ -1153,5 +1491,26 @@ app.get('/api/test', (req, res) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-    console.log(`Server listening at http://0.0.0.0:${port}`);
+    console.log(`\n🚀 MOMi Backend Server Started Successfully!`);
+    console.log(`====================================`);
+    console.log(`📍 Server URL: http://0.0.0.0:${port}`);
+    console.log(`📅 Started at: ${new Date().toISOString()}`);
+    console.log(`\n🔧 Configuration Status:`);
+    console.log(`   - Supabase Client: ${supabase ? '✅ Connected' : '❌ Not Connected'}`);
+    console.log(`   - OpenAI Client: ${openai ? '✅ Connected' : '❌ Not Connected'}`);
+    console.log(`   - Service Key: ${supabaseServiceKey ? '✅ Set' : '⚠️  Not Set (File uploads may fail)'}`);
+    console.log(`   - Admin Routes: ✅ Protected at /api/admin/*`);
+    console.log(`   - CORS: ✅ Enabled for all origins`);
+    console.log(`\n📚 RAG System:`);
+    console.log(`   - Document Upload: /api/admin/rag/upload-document`);
+    console.log(`   - Similarity Threshold: 0.82`);
+    console.log(`   - Chunk Size: 1500 chars (150 overlap)`);
+    console.log(`   - Metadata Tracking: ✅ Enabled`);
+    console.log(`\n🎯 Features Active:`);
+    console.log(`   - Guest Sessions: ✅`);
+    console.log(`   - Image Support: ✅`);
+    console.log(`   - Voice Input: ✅`);
+    console.log(`   - Conversation State: ✅`);
+    console.log(`   - Resilient Reset Quiz: ✅`);
+    console.log(`====================================\n`);
 }); 

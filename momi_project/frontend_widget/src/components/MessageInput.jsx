@@ -45,18 +45,57 @@ const LoadingDotsIcon = () => (
   </svg>
 );
 
-const MessageInput = ({ onSendMessage, isLoading }) => {
+const MessageInput = ({ onSendMessage, isLoading, messages = [] }) => {
   const [text, setText] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const fileInputRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const inputRef = useRef(null); // Add ref for text input
 
   // Voice input state
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [voiceError, setVoiceError] = useState('');
   const [transcribing, setTranscribing] = useState(false);
+
+  // Auto-focus input when messages change
+  useEffect(() => {
+    // Only focus if not recording or transcribing to avoid interrupting voice input
+    if (!isRecording && !transcribing && inputRef.current) {
+      // Small delay to ensure DOM is updated after message render
+      setTimeout(() => {
+        // Check if device is not mobile or if user has interacted recently
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        // On mobile devices, only auto-focus if the keyboard was already visible
+        // This prevents unwanted keyboard popup
+        if (!isMobile || document.activeElement === inputRef.current || document.activeElement?.tagName === 'INPUT') {
+          inputRef.current?.focus();
+          
+          // Prevent zoom on iOS devices by temporarily setting font-size
+          if (isMobile && inputRef.current) {
+            const currentFontSize = window.getComputedStyle(inputRef.current).fontSize;
+            inputRef.current.style.fontSize = '16px';
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.style.fontSize = currentFontSize;
+              }
+            }, 300);
+          }
+        }
+      }, 100);
+    }
+  }, [messages.length, isRecording, transcribing]);
+
+  // Focus on mount for desktop
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   useEffect(() => {
     // Clean up MediaRecorder effects
@@ -210,6 +249,12 @@ const MessageInput = ({ onSendMessage, isLoading }) => {
           placeholder={isRecording ? "Recording..." : (transcribing ? "Transcribing..." : "Type your message...")}
           className="text-input"
           disabled={isLoading || isRecording || transcribing}
+          ref={inputRef}
+          autoComplete="off"
+          autoCorrect="on"
+          autoCapitalize="sentences"
+          spellCheck="true"
+          enterKeyHint="send"
         />
 
         <button type="submit" className="control-button send-button" disabled={isLoading || isRecording || transcribing || (!text.trim() && !imageFile)}>

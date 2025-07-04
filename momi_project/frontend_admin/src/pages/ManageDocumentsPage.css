@@ -90,6 +90,23 @@
     margin-right: 8px;
 }
 
+/* Indexed status icons */
+.indexed-status {
+    text-align: center;
+}
+
+.indexed-icon {
+    font-size: 1.2em;
+}
+
+.indexed-icon.indexed-yes {
+    color: #4CAF50; /* Green for indexed */
+}
+
+.indexed-icon.indexed-no {
+    color: #f44336; /* Red for not indexed */
+}
+
 /* Responsive table data labels - hidden by default */
 [data-label] {
   /* Standard display for larger screens */
