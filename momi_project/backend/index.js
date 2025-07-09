@@ -522,27 +522,36 @@ adminRouter.get('/kb/health-check', async (req, res) => {
             checks: {}
         };
 
-        // 1. Check pgvector extension
+        // 1. Check pgvector extension (called 'vector' in Supabase)
         try {
-            const { data: extensionCheck } = await supabase
-                .rpc('pg_extension_exists', { extension_name: 'vector' })
+            // Direct check if extension exists
+            const { data: extCheck, error: extError } = await supabase
+                .from('pg_extension')
+                .select('extname')
+                .eq('extname', 'vector')
                 .single();
-            healthCheck.checks.pgvector = {
-                status: extensionCheck ? 'ok' : 'missing',
-                message: extensionCheck ? 'pgvector extension is installed' : 'pgvector extension not found'
-            };
-        } catch (err) {
-            // Alternative check
-            try {
-                await supabase.rpc('match_document_chunks', {
-                    query_embedding: new Array(1536).fill(0),
-                    match_threshold: 0.9,
-                    match_count: 1
-                });
-                healthCheck.checks.pgvector = { status: 'ok', message: 'pgvector is functional' };
-            } catch {
-                healthCheck.checks.pgvector = { status: 'error', message: 'pgvector not functional' };
+            
+            if (extCheck && !extError) {
+                healthCheck.checks.pgvector = { status: 'ok', message: 'vector extension is installed' };
+            } else {
+                // Fallback: Try to use the function
+                try {
+                    await supabase.rpc('match_document_chunks', {
+                        query_embedding: new Array(1536).fill(0),
+                        match_threshold: 0.1,
+                        match_count: 1
+                    });
+                    healthCheck.checks.pgvector = { status: 'ok', message: 'vector extension is functional' };
+                } catch (funcError) {
+                    healthCheck.checks.pgvector = { 
+                        status: 'error', 
+                        message: 'vector extension not accessible. Check if enabled in Database > Extensions' 
+                    };
+                }
             }
+        } catch (err) {
+            // If we can't check directly, assume it's working if function exists
+            healthCheck.checks.pgvector = { status: 'warning', message: 'Could not verify vector extension directly' };
         }
 
         // 2. Check document count
