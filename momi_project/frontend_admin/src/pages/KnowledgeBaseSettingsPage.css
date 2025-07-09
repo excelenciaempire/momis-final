@@ -1,0 +1,292 @@
+/* Knowledge Base Settings Page Styles */
+.kb-settings-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Settings form specific styles */
+.settings-form {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.form-group .help-text {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  font-weight: normal;
+  margin-top: 4px;
+}
+
+/* Range input styling */
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: #ddd;
+  outline: none;
+  border-radius: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #7c3aed;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #7c3aed;
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+}
+
+/* Checkbox styling */
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 10px;
+  margin-top: 2px;
+}
+
+/* Health check section */
+.health-check-section {
+  padding: 20px;
+}
+
+.health-results {
+  margin-top: 20px;
+}
+
+.health-results h3 {
+  margin-bottom: 15px;
+}
+
+.status-healthy { color: #10b981; }
+.status-degraded { color: #f59e0b; }
+.status-unhealthy { color: #ef4444; }
+
+.health-checks {
+  list-style: none;
+  padding: 0;
+}
+
+.health-checks li {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background: #f9fafb;
+}
+
+.check-ok {
+  border-left: 4px solid #10b981;
+}
+
+.check-warning {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+}
+
+.check-error {
+  border-left: 4px solid #ef4444;
+  background: #fef2f2;
+}
+
+/* Test query section */
+.test-query-section {
+  padding: 20px;
+}
+
+.test-query-section input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.test-results {
+  margin-top: 20px;
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.test-results h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #1f2937;
+}
+
+.test-results p {
+  margin: 5px 0;
+  color: #6b7280;
+}
+
+.results-list {
+  margin-top: 15px;
+}
+
+.result-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.result-header strong {
+  color: #7c3aed;
+}
+
+.similarity {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.similarity.high {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.similarity.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.similarity.low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.result-preview {
+  font-size: 0.9em;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Message styles */
+.success-message {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #a7f3d0;
+}
+
+.warning-message {
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #fde68a;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #fecaca;
+}
+
+/* Card styling */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card.mb-2 {
+  margin-bottom: 20px;
+}
+
+.card-header {
+  background-color: #f9fafb;
+  padding: 16px 20px;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Button styling */
+.button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.button.primary {
+  background-color: #7c3aed;
+  color: white;
+}
+
+.button.primary:hover:not(:disabled) {
+  background-color: #6d28d9;
+}
+
+.button.secondary {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.button.secondary:hover:not(:disabled) {
+  background-color: #d1d5db;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .kb-settings-container {
+    padding: 10px;
+  }
+  
+  .settings-form,
+  .health-check-section,
+  .test-query-section {
+    padding: 15px;
+  }
+} 

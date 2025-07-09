@@ -513,6 +513,237 @@ adminRouter.delete('/rag/document/:documentId', async (req, res) => {
     }
 });
 
+// --- Knowledge Base Health Check ---
+adminRouter.get('/kb/health-check', async (req, res) => {
+    try {
+        const healthCheck = {
+            status: 'checking',
+            timestamp: new Date().toISOString(),
+            checks: {}
+        };
+
+        // 1. Check pgvector extension
+        try {
+            const { data: extensionCheck } = await supabase
+                .rpc('pg_extension_exists', { extension_name: 'vector' })
+                .single();
+            healthCheck.checks.pgvector = {
+                status: extensionCheck ? 'ok' : 'missing',
+                message: extensionCheck ? 'pgvector extension is installed' : 'pgvector extension not found'
+            };
+        } catch (err) {
+            // Alternative check
+            try {
+                await supabase.rpc('match_document_chunks', {
+                    query_embedding: new Array(1536).fill(0),
+                    match_threshold: 0.9,
+                    match_count: 1
+                });
+                healthCheck.checks.pgvector = { status: 'ok', message: 'pgvector is functional' };
+            } catch {
+                healthCheck.checks.pgvector = { status: 'error', message: 'pgvector not functional' };
+            }
+        }
+
+        // 2. Check document count
+        const { count: docCount, error: docError } = await supabase
+            .from('knowledge_base_documents')
+            .select('*', { count: 'exact', head: true });
+        healthCheck.checks.documents = {
+            status: docError ? 'error' : 'ok',
+            count: docCount || 0,
+            message: docError ? docError.message : `${docCount || 0} documents in knowledge base`
+        };
+
+        // 3. Check chunk count
+        const { count: chunkCount, error: chunkError } = await supabase
+            .from('document_chunks')
+            .select('*', { count: 'exact', head: true });
+        healthCheck.checks.chunks = {
+            status: chunkError ? 'error' : 'ok',
+            count: chunkCount || 0,
+            message: chunkError ? chunkError.message : `${chunkCount || 0} chunks indexed`
+        };
+
+        // 4. Test embedding generation
+        try {
+            const testEmbedding = await getEmbedding("test query for health check");
+            healthCheck.checks.embeddings = {
+                status: 'ok',
+                message: 'OpenAI embedding generation working',
+                dimensions: testEmbedding.length
+            };
+        } catch (err) {
+            healthCheck.checks.embeddings = {
+                status: 'error',
+                message: `Embedding generation failed: ${err.message}`
+            };
+        }
+
+        // 5. Test similarity search
+        if (chunkCount > 0) {
+            try {
+                const testQuery = "health check test query";
+                const embedding = await getEmbedding(testQuery);
+                const { data: searchResults, error: searchError } = await supabase
+                    .rpc('match_document_chunks', {
+                        query_embedding: embedding,
+                        match_threshold: 0.1, // Very low threshold for health check
+                        match_count: 1
+                    });
+                
+                healthCheck.checks.similarity_search = {
+                    status: searchError ? 'error' : 'ok',
+                    message: searchError ? searchError.message : 'Similarity search working',
+                    results_found: searchResults ? searchResults.length : 0
+                };
+            } catch (err) {
+                healthCheck.checks.similarity_search = {
+                    status: 'error',
+                    message: `Similarity search failed: ${err.message}`
+                };
+            }
+        } else {
+            healthCheck.checks.similarity_search = {
+                status: 'warning',
+                message: 'No chunks to search - upload documents first'
+            };
+        }
+
+        // 6. Check KB configuration
+        const { data: kbConfig } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'kb_retrieval_config')
+            .single();
+        healthCheck.checks.configuration = {
+            status: kbConfig ? 'ok' : 'warning',
+            message: kbConfig ? 'KB configuration found' : 'Using default configuration',
+            config: kbConfig ? JSON.parse(kbConfig.setting_value) : null
+        };
+
+        // Overall status
+        const statuses = Object.values(healthCheck.checks).map(c => c.status);
+        if (statuses.includes('error')) {
+            healthCheck.status = 'unhealthy';
+        } else if (statuses.includes('warning')) {
+            healthCheck.status = 'degraded';
+        } else {
+            healthCheck.status = 'healthy';
+        }
+
+        res.json(healthCheck);
+    } catch (error) {
+        console.error('KB health check error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Health check failed',
+            error: error.message
+        });
+    }
+});
+
+// Test KB with a sample query
+adminRouter.post('/kb/test-query', async (req, res) => {
+    const { query } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Query string is required' });
+    }
+
+    try {
+        // Get KB config
+        const { data: configData } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'kb_retrieval_config')
+            .single();
+        const kbConfig = configData ? JSON.parse(configData.setting_value) : { similarity_threshold: 0.78, max_chunks: 5 };
+
+        // Generate embedding
+        const startTime = Date.now();
+        const queryEmbedding = await getEmbedding(query);
+        const embeddingTime = Date.now() - startTime;
+
+        // Search for similar chunks
+        const { data: chunks, error: matchError } = await supabase.rpc('match_document_chunks', {
+            query_embedding: queryEmbedding,
+            match_threshold: kbConfig.similarity_threshold,
+            match_count: kbConfig.max_chunks
+        });
+        const searchTime = Date.now() - startTime - embeddingTime;
+
+        if (matchError) {
+            throw new Error(`Search failed: ${matchError.message}`);
+        }
+
+        // Get document names
+        const docIds = [...new Set((chunks || []).map(c => c.document_id))];
+        const { data: docs } = await supabase
+            .from('knowledge_base_documents')
+            .select('id, file_name')
+            .in('id', docIds);
+        const docMap = docs ? Object.fromEntries(docs.map(d => [d.id, d.file_name])) : {};
+
+        // Format results
+        const results = (chunks || []).map((chunk, idx) => ({
+            rank: idx + 1,
+            similarity: chunk.similarity,
+            document: docMap[chunk.document_id] || 'Unknown',
+            metadata: chunk.metadata || {},
+            text_preview: chunk.chunk_text.substring(0, 200) + '...'
+        }));
+
+        res.json({
+            query,
+            embedding_time_ms: embeddingTime,
+            search_time_ms: searchTime,
+            total_time_ms: Date.now() - startTime,
+            chunks_found: results.length,
+            similarity_threshold: kbConfig.similarity_threshold,
+            results
+        });
+    } catch (error) {
+        console.error('KB test query error:', error);
+        res.status(500).json({
+            error: 'Test query failed',
+            message: error.message
+        });
+    }
+});
+
+// Get KB analytics statistics
+adminRouter.get('/kb/analytics', async (req, res) => {
+    const { days = 7 } = req.query;
+    
+    try {
+        const { data, error } = await supabase.rpc('get_kb_usage_stats', {
+            days_back: parseInt(days)
+        });
+        
+        if (error) throw error;
+        
+        res.json({
+            period_days: parseInt(days),
+            stats: data[0] || {
+                total_queries: 0,
+                avg_chunks_found: 0,
+                avg_chunks_used: 0,
+                avg_similarity: 0,
+                avg_response_time_ms: 0,
+                top_sources: [],
+                queries_per_day: {}
+            }
+        });
+    } catch (error) {
+        console.error('KB analytics error:', error);
+        res.status(500).json({
+            error: 'Failed to fetch KB analytics',
+            message: error.message
+        });
+    }
+});
+
 // --- System Settings Routes for Admin ---
 
 // Get the current Momi base prompt
@@ -1219,33 +1450,67 @@ app.post('/api/chat/message', async (req, res) => {
         // RAG: Retrieve relevant context based on the user's message
         let ragContext = '';
         let ragSources = [];
+        let kbConfig = { similarity_threshold: 0.78, max_chunks: 5, use_top_chunks: 3, debug_mode: false };
+        
+        // Fetch KB configuration
+        try {
+            const { data: configData } = await supabase
+                .from('system_settings')
+                .select('setting_value')
+                .eq('setting_key', 'kb_retrieval_config')
+                .single();
+            if (configData) {
+                kbConfig = JSON.parse(configData.setting_value);
+            }
+        } catch (configError) {
+            console.error("Error fetching KB config, using defaults:", configError);
+        }
+        
         if (message && !imageUrl) { // Only do RAG for text messages for now
             try {
+                const startTime = Date.now();
                 const queryEmbedding = await getEmbedding(message);
+                const embeddingTime = Date.now() - startTime;
+                
                 const { data: chunks, error: matchError } = await supabase.rpc('match_document_chunks', {
                     query_embedding: queryEmbedding,
-                    match_threshold: 0.82, // Increased threshold for better relevance
-                    match_count: 5       // Get more chunks to pick the best
+                    match_threshold: kbConfig.similarity_threshold,
+                    match_count: kbConfig.max_chunks
                 });
+                const retrievalTime = Date.now() - startTime - embeddingTime;
 
-                if (matchError) console.error("Error matching document chunks:", matchError.message);
+                if (matchError) {
+                    console.error("Error matching document chunks:", matchError.message);
+                } else if (kbConfig.debug_mode) {
+                    console.log(`\n🔍 Knowledge Base Retrieval Debug:`);
+                    console.log(`   Query: "${message}"`);
+                    console.log(`   Embedding time: ${embeddingTime}ms`);
+                    console.log(`   Retrieval time: ${retrievalTime}ms`);
+                    console.log(`   Chunks found: ${chunks ? chunks.length : 0}`);
+                    console.log(`   Similarity threshold: ${kbConfig.similarity_threshold}`);
+                }
                 
                 if (chunks && chunks.length > 0) {
-                    // Sort by similarity and take top 3
-                    const topChunks = chunks.sort((a, b) => b.similarity - a.similarity).slice(0, 3);
+                    // Sort by similarity and take top chunks based on config
+                    const topChunks = chunks.sort((a, b) => b.similarity - a.similarity).slice(0, kbConfig.use_top_chunks);
                     
                     // Enhanced debug logging with metadata
-                    console.debug('RAG Query:', message);
-                    console.debug(`Found ${chunks.length} chunks, using top 3:`);
-                    topChunks.forEach((chunk, idx) => {
-                        const metadata = chunk.metadata || {};
-                        console.debug(`\n${idx + 1}. Chunk Info:`);
-                        console.debug(`   - Similarity: ${chunk.similarity.toFixed(4)}`);
-                        console.debug(`   - File: ${metadata.fileName || 'Unknown'}`);
-                        console.debug(`   - Chunk Index: ${metadata.chunkIndex !== undefined ? metadata.chunkIndex : 'N/A'}`);
-                        console.debug(`   - Total Chunks: ${metadata.totalChunks || 'N/A'}`);
-                        console.debug(`   - Preview: "${chunk.chunk_text.substring(0, 100)}..."`);
-                    });
+                    if (kbConfig.debug_mode) {
+                        console.log(`\n📚 Knowledge Base Chunks Analysis:`);
+                        console.log(`   Total chunks found: ${chunks.length}`);
+                        console.log(`   Using top ${kbConfig.use_top_chunks} chunks`);
+                        console.log(`   Similarity range: ${chunks[0].similarity.toFixed(4)} - ${chunks[chunks.length-1].similarity.toFixed(4)}`);
+                        
+                        console.log(`\n📄 Selected Chunks:`);
+                        topChunks.forEach((chunk, idx) => {
+                            const metadata = chunk.metadata || {};
+                            console.log(`\n   ${idx + 1}. ${metadata.fileName || 'Unknown Document'}`);
+                            console.log(`      - Similarity: ${chunk.similarity.toFixed(4)} ${chunk.similarity >= 0.9 ? '🟢' : chunk.similarity >= 0.8 ? '🟡' : '🟠'}`);
+                            console.log(`      - Chunk: ${metadata.chunkIndex !== undefined ? metadata.chunkIndex + 1 : 'N/A'}/${metadata.totalChunks || '?'}`);
+                            console.log(`      - Size: ${chunk.chunk_text.length} chars`);
+                            console.log(`      - Preview: "${chunk.chunk_text.substring(0, 150).replace(/\n/g, ' ')}..."`);
+                        });
+                    }
                     
                     // Fetch document names for source attribution
                     const docIds = [...new Set(topChunks.map(c => c.document_id))];
@@ -1279,6 +1544,60 @@ app.post('/api/chat/message', async (req, res) => {
                         similarity: chunk.similarity,
                         metadata: chunk.metadata || {}
                     }));
+                    
+                    // Track KB usage analytics
+                    try {
+                        const { data: analyticsEnabled } = await supabase
+                            .from('system_settings')
+                            .select('setting_value')
+                            .eq('setting_key', 'kb_analytics_enabled')
+                            .single();
+                            
+                        if (analyticsEnabled && analyticsEnabled.setting_value === 'true') {
+                            const kbUsageData = {
+                                query: message.substring(0, 200), // Truncate for privacy
+                                chunks_found: chunks.length,
+                                chunks_used: topChunks.length,
+                                avg_similarity: topChunks.reduce((sum, c) => sum + c.similarity, 0) / topChunks.length,
+                                sources: ragSources.map(s => s.fileName),
+                                timestamp: new Date().toISOString()
+                            };
+                            
+                            // Save to analytics table
+                            try {
+                                const { data: trackingResult, error: trackingError } = await supabase.rpc('track_kb_query', {
+                                    p_query_text: message,
+                                    p_conversation_id: currentConversationId,
+                                    p_chunks_found: chunks.length,
+                                    p_chunks_used: topChunks.length,
+                                    p_avg_similarity: kbUsageData.avg_similarity,
+                                    p_sources: kbUsageData.sources,
+                                    p_embedding_time_ms: embeddingTime,
+                                    p_retrieval_time_ms: retrievalTime,
+                                    p_total_time_ms: Date.now() - startTime,
+                                    p_metadata: {
+                                        user_type: userId ? 'registered' : 'guest',
+                                        threshold_used: kbConfig.similarity_threshold
+                                    }
+                                });
+                                
+                                if (trackingError) {
+                                    console.error("KB analytics tracking error:", trackingError);
+                                } else if (kbConfig.debug_mode) {
+                                    console.log('\n📊 KB Usage tracked:', trackingResult);
+                                }
+                            } catch (trackingError) {
+                                console.error("KB analytics tracking failed:", trackingError);
+                            }
+                            
+                            if (kbConfig.debug_mode) {
+                                console.log('\n📊 KB Usage Analytics:', kbUsageData);
+                            }
+                        }
+                    } catch (analyticsError) {
+                        // Don't let analytics errors affect the main flow
+                        console.error("Analytics tracking error:", analyticsError);
+                    }
                 }
             } catch (ragError) {
                 console.error("Error during RAG retrieval:", ragError.message);
@@ -1361,9 +1680,14 @@ app.post('/api/chat/message', async (req, res) => {
             }
         }
         
-        console.log("Sending to OpenAI. System prompt included: ", systemPrompt.substring(0, 100) + "...");
-        if (ragSources.length > 0) {
-            console.log("RAG sources used:", ragSources);
+        if (kbConfig.debug_mode) {
+            console.log("\n🤖 Sending to OpenAI:");
+            console.log("   System prompt length:", systemPrompt.length, "chars");
+            console.log("   RAG context included:", ragContext.length > 0 ? 'Yes' : 'No');
+            if (ragSources.length > 0) {
+                console.log("   KB sources used:", ragSources.map(s => s.fileName).join(', '));
+                console.log("   Average similarity:", (ragSources.reduce((sum, s) => sum + s.similarity, 0) / ragSources.length).toFixed(3));
+            }
         }
 
         // 4. Call OpenAI API

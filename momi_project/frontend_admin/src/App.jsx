@@ -6,6 +6,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import ManageDocumentsPage from './pages/ManageDocumentsPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import UserManagementPage from './pages/UserManagementPage';
+import KnowledgeBaseSettingsPage from './pages/KnowledgeBaseSettingsPage';
 import './App.css'; // General admin styles
 
 // Component for Unauthorized Access
@@ -49,6 +50,7 @@ const AdminLayout = ({ session }) => {
         {/* Knowledge Section Links */}
         <div className="nav-section-header">Knowledge</div> 
         <NavLink to="/knowledge/documents">Manage Documents</NavLink>
+        <NavLink to="/knowledge/kb-settings">KB Settings</NavLink>
         <NavLink to="/knowledge/settings">System Prompt</NavLink>
         
         {session?.user && (
@@ -137,6 +139,7 @@ function App() {
             <Route path="/" element={<AnalyticsPage />} />
             <Route path="/conversations" element={<UserManagementPage />} />
             <Route path="/knowledge/documents" element={<ManageDocumentsPage />} />
+            <Route path="/knowledge/kb-settings" element={<KnowledgeBaseSettingsPage />} />
             <Route path="/knowledge/settings" element={<SystemSettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to={(session && userRole === 'admin') ? "/" : "/login"} replace />} />
