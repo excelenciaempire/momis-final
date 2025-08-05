@@ -39,7 +39,7 @@ const ManageDocumentsPage = () => {
       const documentsWithUrls = await Promise.all(data.map(async (doc) => {
         const { data: urlData } = await supabase
           .storage
-          .from('knowledge_base_files')
+          .from('knowledge-base-files')
           .getPublicUrl(doc.storage_path);
         
         return {

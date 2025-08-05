@@ -103,12 +103,7 @@ const SystemSettingsPage = () => {
     setIsSaving(false);
   };
 
-  const handleReset = () => {
-    setBasePrompt(initialPrompt);
-    setNotification({ type: '', message: '' });
-  };
-
-  const hasChanges = basePrompt !== initialPrompt;
+  const hasChanges = basePrompt !== initialPrompt || openingMessage !== initialOpeningMessage;
 
   return (
     <div className="system-settings-container"> {/* Consistent container name */}
@@ -120,70 +115,68 @@ const SystemSettingsPage = () => {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header">MOMi Opening Message</div>
-        <form onSubmit={handleSubmit} style={{ paddingTop: '15px' }}>
-          <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
-            This is the first message a user sees when they open the chat.
-          </p>
-          {isLoading ? (
-            <div className="loading-prompt-placeholder">
-              <p>Loading message...</p>
-            </div>
-          ) : (
-            <div className="form-group">
-              <label htmlFor="openingMessage" style={{ display: 'none' }}>Opening Message</label>
-              <textarea
-                id="openingMessage"
-                value={openingMessage}
-                onChange={(e) => setOpeningMessage(e.target.value)}
-                rows="4"
-                placeholder="Enter the opening message..."
-                disabled={isSaving}
-                className="base-prompt-textarea"
-              />
-            </div>
-          )}
-        </form>
-      </div>
-
-      <div className="card"> {/* Wrap form in a card */}
-        <div className="card-header">MOMi Base System Prompt</div>
-        <form onSubmit={handleSubmit} style={{ paddingTop: '15px' }}>
-          <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
-            This prompt guides MOMi's core personality, instructions, and empathetic tone. Edit with care.
-          </p>
-          {isLoading ? (
-            <div className="loading-prompt-placeholder">
-                <p>Loading prompt...</p>
-                <div className="spinner"></div> {/* Optional: Add a CSS spinner */}
-            </div>
-          ) : (
-            <div className="form-group">
-              <label htmlFor="momiBasePrompt" style={{ display: 'none' }}>MOMi Base Prompt</label> {/* Hidden label for accessibility */}
-              <textarea
-                id="momiBasePrompt"
-                value={basePrompt}
-                onChange={handlePromptChange}
-                rows="15" /* Increased rows */
-                placeholder="Enter MOMi's base system prompt here..."
-                disabled={isSaving}
-                className="base-prompt-textarea"
-              />
-            </div>
-          )}
-          
-          <div className="form-actions">
-            <button type="submit" disabled={isSaving || isLoading || !hasChanges} className="button">
-              {isSaving ? 'Saving...' : 'Save All Settings'}
-            </button>
-            <button type="button" onClick={handleReset} disabled={isSaving || isLoading || !hasChanges} className="button secondary">
-              Reset Changes
-            </button>
+      <form onSubmit={handleSubmit}>
+        <div className="card">
+          <div className="card-header">MOMi Opening Message</div>
+          <div style={{ padding: '20px', paddingTop: '15px' }}>
+            <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
+              This is the first message a user sees when they open the chat.
+            </p>
+            {isLoading ? (
+              <div className="loading-prompt-placeholder">
+                <p>Loading message...</p>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="openingMessage" style={{ display: 'none' }}>Opening Message</label>
+                <textarea
+                  id="openingMessage"
+                  value={openingMessage}
+                  onChange={(e) => setOpeningMessage(e.target.value)}
+                  rows="4"
+                  placeholder="Enter the opening message..."
+                  disabled={isSaving}
+                  className="base-prompt-textarea"
+                />
+              </div>
+            )}
           </div>
-        </form>
-      </div>
-      {/* Future settings could be additional cards */}
+        </div>
+
+        <div className="card">
+          <div className="card-header">MOMi Base System Prompt</div>
+          <div style={{ padding: '20px', paddingTop: '15px' }}>
+            <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
+              This prompt guides MOMi's core personality, instructions, and empathetic tone. Edit with care.
+            </p>
+            {isLoading ? (
+              <div className="loading-prompt-placeholder">
+                  <p>Loading prompt...</p>
+                  <div className="spinner"></div>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="momiBasePrompt" style={{ display: 'none' }}>MOMi Base Prompt</label>
+                <textarea
+                  id="momiBasePrompt"
+                  value={basePrompt}
+                  onChange={handlePromptChange}
+                  rows="15"
+                  placeholder="Enter MOMi's base system prompt here..."
+                  disabled={isSaving}
+                  className="base-prompt-textarea"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="form-actions-sticky">
+          <button type="submit" disabled={isSaving || isLoading || !hasChanges} className="button">
+            {isSaving ? 'Saving...' : 'Save All Settings'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

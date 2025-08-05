@@ -371,7 +371,7 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
 
         // 1. Upload original document to Supabase Storage
         const { error: uploadError } = await supabase.storage
-            .from('momi-final') // Ensure this bucket exists and has correct policies
+            .from('knowledge-base-files') // Ensure this bucket exists and has correct policies
             .upload(storagePath, req.file.buffer, {
                 contentType: req.file.mimetype,
                 upsert: false
@@ -390,7 +390,7 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
         } else {
             // This case should ideally not be reached due to multer filter, but as a safeguard:
             // Clean up the uploaded file if we're not going to process it.
-            await supabase.storage.from('momi-final').remove([storagePath]);
+            await supabase.storage.from('knowledge-base-files').remove([storagePath]);
             return res.status(400).json({ error: 'Unsupported file type for RAG.' });
         }
 
@@ -406,7 +406,7 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
         
         if (docError) {
             // If DB insert fails, remove the orphaned file from storage
-            await supabase.storage.from('momi-final').remove([storagePath]);
+            await supabase.storage.from('knowledge-base-files').remove([storagePath]);
             throw docError;
         }
         const documentId = docData.id;
@@ -518,7 +518,7 @@ adminRouter.delete('/rag/document/:documentId', async (req, res) => {
         // 3. Delete the actual file from Supabase Storage
         if (doc.storage_path) {
             const { error: storageError } = await supabase.storage
-                .from('momi-final')
+                .from('knowledge-base-files')
                 .remove([doc.storage_path]);
             
             if (storageError) {
@@ -924,13 +924,40 @@ adminRouter.get('/users/registered', async (req, res) => {
 // Get all guest users who have conversations
 adminRouter.get('/users/guests', async (req, res) => {
     try {
-        const { data, error } = await supabase.rpc('get_guest_users_with_conversations');
+        // Step 1: Get all distinct guest_user_ids from the conversations table.
+        const { data: convs, error: convsError } = await supabase
+            .from('conversations')
+            .select('guest_user_id')
+            .not('guest_user_id', 'is', null);
 
-        if (error) throw error;
-        res.json(data || []);
+        if (convsError) {
+            throw convsError;
+        }
+
+        // Create a unique set of IDs, filtering out any potential nulls.
+        const guestIdsWithConvos = [...new Set(convs.map(c => c.guest_user_id).filter(id => id))];
+
+        // If no guests have conversations, return an empty array immediately.
+        if (guestIdsWithConvos.length === 0) {
+            return res.json([]);
+        }
+
+        // Step 2: Fetch the full details for only those guest users who have conversations.
+        const { data: guests, error: guestsError } = await supabase
+            .from('guest_users')
+            .select('*')
+            .in('id', guestIdsWithConvos)
+            .order('created_at', { ascending: false });
+
+        if (guestsError) {
+            throw guestsError;
+        }
+
+        res.json(guests || []);
+
     } catch (error) {
         console.error('Error fetching guest users with conversations:', error);
-        res.status(500).json({ error: 'Failed to fetch guest users', details: error.message });
+        res.status(500).json({ error: 'Failed to fetch guest users with conversations', details: error.message });
     }
 });
 
