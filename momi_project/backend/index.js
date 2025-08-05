@@ -924,36 +924,16 @@ adminRouter.get('/users/registered', async (req, res) => {
 // Get all guest users who have conversations
 adminRouter.get('/users/guests', async (req, res) => {
     try {
-        // Step 1: Get all distinct guest_user_ids from the conversations table.
-        const { data: convs, error: convsError } = await supabase
-            .from('conversations')
-            .select('guest_user_id')
-            .not('guest_user_id', 'is', null);
+        // Use the new RPC function to get guests sorted by their most recent conversation
+        const { data, error } = await supabase.rpc('get_guests_sorted_by_recent_conversation');
 
-        if (convsError) {
-            throw convsError;
+        if (error) {
+            // Log the specific error for better debugging
+            console.error('Error calling get_guests_sorted_by_recent_conversation RPC:', error);
+            throw error;
         }
 
-        // Create a unique set of IDs, filtering out any potential nulls.
-        const guestIdsWithConvos = [...new Set(convs.map(c => c.guest_user_id).filter(id => id))];
-
-        // If no guests have conversations, return an empty array immediately.
-        if (guestIdsWithConvos.length === 0) {
-            return res.json([]);
-        }
-
-        // Step 2: Fetch the full details for only those guest users who have conversations.
-        const { data: guests, error: guestsError } = await supabase
-            .from('guest_users')
-            .select('*')
-            .in('id', guestIdsWithConvos)
-            .order('created_at', { ascending: false });
-
-        if (guestsError) {
-            throw guestsError;
-        }
-
-        res.json(guests || []);
+        res.json(data || []);
 
     } catch (error) {
         console.error('Error fetching guest users with conversations:', error);
@@ -1986,6 +1966,37 @@ const setupDatabaseFunctions = async () => {
                         WHERE c.guest_user_id = gu.id
                     )
                     ORDER BY gu.created_at DESC;
+                END;
+                $$ LANGUAGE plpgsql;
+            `
+        },
+        {
+            name: 'get_guests_sorted_by_recent_conversation',
+            sql: `
+                CREATE OR REPLACE FUNCTION get_guests_sorted_by_recent_conversation()
+                RETURNS TABLE(id uuid, created_at timestamptz, session_token text, last_conversation_at timestamptz) AS $$
+                BEGIN
+                    RETURN QUERY
+                    SELECT
+                        gu.id,
+                        gu.created_at,
+                        gu.session_token,
+                        c.last_conversation_at
+                    FROM
+                        guest_users gu
+                    JOIN (
+                        SELECT
+                            guest_user_id,
+                            MAX(created_at) AS last_conversation_at
+                        FROM
+                            conversations
+                        WHERE
+                            guest_user_id IS NOT NULL
+                        GROUP BY
+                            guest_user_id
+                    ) AS c ON gu.id = c.guest_user_id
+                    ORDER BY
+                        c.last_conversation_at DESC;
                 END;
                 $$ LANGUAGE plpgsql;
             `
