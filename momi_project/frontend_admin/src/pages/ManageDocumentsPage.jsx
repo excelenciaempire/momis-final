@@ -31,10 +31,24 @@ const ManageDocumentsPage = () => {
       // or if using service key on backend. For now, assume public read or RLS handles it.
       const { data, error: fetchError } = await supabase
         .from('knowledge_base_documents')
-        .select('id, file_name, file_type, uploaded_at, last_indexed_at')
+        .select('id, file_name, file_type, uploaded_at, last_indexed_at, storage_path')
         .order('uploaded_at', { ascending: false });
       if (fetchError) throw fetchError;
-      setDocuments(data || []);
+
+      // Enhance documents with public URLs
+      const documentsWithUrls = await Promise.all(data.map(async (doc) => {
+        const { data: urlData } = await supabase
+          .storage
+          .from('knowledge_base_files')
+          .getPublicUrl(doc.storage_path);
+        
+        return {
+          ...doc,
+          public_url: urlData.publicUrl,
+        };
+      }));
+
+      setDocuments(documentsWithUrls || []);
     } catch (err) {
       console.error("Error fetching documents:", err);
       setNotification({ type: 'error', message: "Failed to load documents: " + err.message });
@@ -173,7 +187,11 @@ const ManageDocumentsPage = () => {
               <tbody>
                 {documents.map(doc => (
                   <tr key={doc.id}>
-                    <td data-label="File Name">{doc.file_name}</td>
+                    <td data-label="File Name">
+                      <a href={doc.public_url} target="_blank" rel="noopener noreferrer" className="document-link">
+                        {doc.file_name}
+                      </a>
+                    </td>
                     <td data-label="Type">{doc.file_type}</td>
                     <td data-label="Uploaded At">{new Date(doc.uploaded_at).toLocaleString()}</td>
                     <td data-label="Last Indexed">{doc.last_indexed_at ? new Date(doc.last_indexed_at).toLocaleString() : 'Never'}</td>

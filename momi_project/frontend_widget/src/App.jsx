@@ -18,20 +18,38 @@ function App({ mode = 'floating' }) {
 
     useEffect(() => {
         const initializeSession = async () => {
-            let storedGuestId = localStorage.getItem('momiGuestUserId');
-            if (storedGuestId) {
-                setGuestUserId(storedGuestId);
-            } else {
-                try {
-                    const { data } = await axios.post('/api/guest/session');
-                    if (data.guestUserId) {
-                        localStorage.setItem('momiGuestUserId', data.guestUserId);
-                        setGuestUserId(data.guestUserId);
+            setIsInitializing(true);
+            try {
+                // Fetch chat settings first
+                const settingsResponse = await axios.get('/api/chat/settings');
+                const openingMessage = {
+                    sender_type: 'momi',
+                    content: settingsResponse.data.openingMessage,
+                    timestamp: new Date().toISOString()
+                };
+                setMessages([openingMessage]);
+
+                // Then, handle guest session
+                let storedGuestId = localStorage.getItem('momiGuestUserId');
+                if (storedGuestId) {
+                    setGuestUserId(storedGuestId);
+                } else {
+                    const sessionResponse = await axios.post('/api/guest/session');
+                    if (sessionResponse.data.guestUserId) {
+                        localStorage.setItem('momiGuestUserId', sessionResponse.data.guestUserId);
+                        setGuestUserId(sessionResponse.data.guestUserId);
                     }
-                } catch (err) {
-                    setError('Could not initialize session.');
-                    console.error('Failed to create guest session:', err);
                 }
+            } catch (err) {
+                setError('Could not initialize session.');
+                console.error('Failed to initialize session:', err);
+                const errorMsg = {
+                    sender_type: 'momi',
+                    content: "Sorry, I couldn't start our conversation properly. Please try refreshing the page.",
+                    timestamp: new Date().toISOString(),
+                    isError: true
+                };
+                setMessages(prev => [...prev, errorMsg]);
             }
             setIsInitializing(false);
         };

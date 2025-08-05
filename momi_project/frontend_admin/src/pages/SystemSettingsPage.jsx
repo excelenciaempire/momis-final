@@ -5,10 +5,12 @@ import './SystemSettingsPage.css'; // We'll create this CSS file next
 
 const SystemSettingsPage = () => {
   const [basePrompt, setBasePrompt] = useState('');
-  const [initialPrompt, setInitialPrompt] = useState(''); // To compare for changes
-  const [isLoading, setIsLoading] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState('');
+  const [openingMessage, setOpeningMessage] = useState('');
+  const [initialOpeningMessage, setInitialOpeningMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [notification, setNotification] = useState({ type: '', message: '' }); // type: 'success', 'info', or 'error'
+  const [notification, setNotification] = useState({ type: '', message: '' });
 
   // Helper to get token, lenient for preview
   const getToken = async () => {
@@ -34,6 +36,13 @@ const SystemSettingsPage = () => {
       });
       setBasePrompt(response.data.momi_base_prompt);
       setInitialPrompt(response.data.momi_base_prompt);
+
+      // Fetch opening message
+      const openingMessageResponse = await axios.get('/api/admin/system-settings/opening-message', {
+        headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+      });
+      setOpeningMessage(openingMessageResponse.data.opening_message);
+      setInitialOpeningMessage(openingMessageResponse.data.opening_message);
     } catch (err) {
       console.error('Error fetching base prompt:', err);
       let errMsg = err.response?.data?.error || err.message || 'Failed to load base prompt.';
@@ -56,7 +65,7 @@ const SystemSettingsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (basePrompt === initialPrompt) {
+    if (basePrompt === initialPrompt && openingMessage === initialOpeningMessage) {
       setNotification({ type: 'info', message: 'No changes to save.'});
       return;
     }
@@ -65,14 +74,24 @@ const SystemSettingsPage = () => {
     let token = null;
     try {
       token = await getToken();
-      // if (!token) throw new Error('Not authenticated. Please log in.'); // Allow proceeding for preview
 
-      await axios.put('/api/admin/system-settings/momi-base-prompt', 
-        { new_prompt_value: basePrompt }, 
-        { headers: { ...(token && { Authorization: `Bearer ${token}` }) } } // Conditionally add auth header
-      );
-      setInitialPrompt(basePrompt); 
-      setNotification({ type: 'success', message: 'MOMi base prompt updated successfully!'});
+      if (basePrompt !== initialPrompt) {
+        await axios.put('/api/admin/system-settings/momi-base-prompt', 
+          { new_prompt_value: basePrompt }, 
+          { headers: { ...(token && { Authorization: `Bearer ${token}` }) } }
+        );
+        setInitialPrompt(basePrompt); 
+      }
+
+      if (openingMessage !== initialOpeningMessage) {
+        await axios.put('/api/admin/system-settings/opening-message', 
+          { new_message_value: openingMessage }, 
+          { headers: { ...(token && { Authorization: `Bearer ${token}` }) } }
+        );
+        setInitialOpeningMessage(openingMessage);
+      }
+
+      setNotification({ type: 'success', message: 'Settings updated successfully!'});
     } catch (err) {
       console.error('Error updating base prompt:', err);
       let errMsg = err.response?.data?.error || err.message || 'Failed to update base prompt.';
@@ -100,6 +119,33 @@ const SystemSettingsPage = () => {
           {notification.message}
         </div>
       )}
+
+      <div className="card">
+        <div className="card-header">MOMi Opening Message</div>
+        <form onSubmit={handleSubmit} style={{ paddingTop: '15px' }}>
+          <p style={{ marginTop: 0, marginBottom: '15px', fontSize: '0.9em' }}>
+            This is the first message a user sees when they open the chat.
+          </p>
+          {isLoading ? (
+            <div className="loading-prompt-placeholder">
+              <p>Loading message...</p>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label htmlFor="openingMessage" style={{ display: 'none' }}>Opening Message</label>
+              <textarea
+                id="openingMessage"
+                value={openingMessage}
+                onChange={(e) => setOpeningMessage(e.target.value)}
+                rows="4"
+                placeholder="Enter the opening message..."
+                disabled={isSaving}
+                className="base-prompt-textarea"
+              />
+            </div>
+          )}
+        </form>
+      </div>
 
       <div className="card"> {/* Wrap form in a card */}
         <div className="card-header">MOMi Base System Prompt</div>
@@ -129,7 +175,7 @@ const SystemSettingsPage = () => {
           
           <div className="form-actions">
             <button type="submit" disabled={isSaving || isLoading || !hasChanges} className="button">
-              {isSaving ? 'Saving...' : 'Save Prompt'}
+              {isSaving ? 'Saving...' : 'Save All Settings'}
             </button>
             <button type="button" onClick={handleReset} disabled={isSaving || isLoading || !hasChanges} className="button secondary">
               Reset Changes

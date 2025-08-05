@@ -365,24 +365,53 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
     // Service key check is implicitly handled by middleware or Supabase client config for admin operations
 
     try {
-        let textContent;
         const fileType = path.extname(req.file.originalname).toLowerCase().substring(1);
+        const fileName = `${crypto.randomBytes(16).toString('hex')}-${req.file.originalname}`;
+        const storagePath = `public/${fileName}`; // Store in a 'public' folder within the bucket
 
+        // 1. Upload original document to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+            .from('momi-final') // Ensure this bucket exists and has correct policies
+            .upload(storagePath, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: false
+            });
+
+        if (uploadError) {
+            console.error('Supabase Storage upload error:', uploadError);
+            throw new Error(`Failed to upload document to storage: ${uploadError.message}`);
+        }
+
+        let textContent;
         if (fileType === 'pdf') {
             textContent = await extractTextFromPdf(req.file.buffer);
         } else if (fileType === 'txt' || fileType === 'md') {
             textContent = req.file.buffer.toString('utf-8');
         } else {
+            // This case should ideally not be reached due to multer filter, but as a safeguard:
+            // Clean up the uploaded file if we're not going to process it.
+            await supabase.storage.from('momi-final').remove([storagePath]);
             return res.status(400).json({ error: 'Unsupported file type for RAG.' });
         }
 
+        // 2. Insert document record with storage path
         const { data: docData, error: docError } = await supabase
             .from('knowledge_base_documents')
-            .insert({ file_name: req.file.originalname, file_type: fileType })
+            .insert({ 
+                file_name: req.file.originalname, 
+                file_type: fileType,
+                storage_path: storagePath // Save the path to the file in storage
+            })
             .select('id').single();
-        if (docError) throw docError;
+        
+        if (docError) {
+            // If DB insert fails, remove the orphaned file from storage
+            await supabase.storage.from('momi-final').remove([storagePath]);
+            throw docError;
+        }
         const documentId = docData.id;
 
+        // 3. Chunk text and create embeddings (existing logic)
         const chunks = chunkText(textContent, 1500, 150);
         let processedChunks = 0;
         for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
@@ -390,22 +419,12 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
             if (chunk.trim().length < 10) continue;
             try {
                 const embedding = await getEmbedding(chunk);
-                
-                // Prepare metadata for better traceability
                 const chunkMetadata = {
                     fileName: req.file.originalname,
                     chunkIndex: chunkIndex,
                     totalChunks: chunks.length,
-                    chunkSize: chunk.length,
                     fileType: fileType
                 };
-                
-                // Add page information for PDFs if we can extract it
-                // Note: pdf-parse doesn't provide page-level extraction by default
-                // This is a placeholder for future enhancement
-                if (fileType === 'pdf') {
-                    chunkMetadata.page = 'N/A'; // Would need enhanced PDF parsing for accurate page numbers
-                }
                 
                 const { error: chunkError } = await supabase
                     .from('document_chunks')
@@ -413,18 +432,13 @@ adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), a
                         document_id: documentId, 
                         chunk_text: chunk, 
                         embedding: embedding,
-                        metadata: chunkMetadata // Add metadata
+                        metadata: chunkMetadata
                     });
                 if (chunkError) {
                     console.error(`Failed to store chunk ${chunkIndex} for doc ${documentId}:`, chunkError.message);
-                    continue;
+                    continue; 
                 }
                 processedChunks++;
-                
-                // Log progress for large documents
-                if (processedChunks % 10 === 0 && chunks.length > 20) {
-                    console.log(`Progress: Processed ${processedChunks}/${chunks.length} chunks for ${req.file.originalname}`);
-                }
             } catch(embeddingError){
                  console.error(`Failed to get embedding for chunk ${chunkIndex} of doc ${documentId}:`, embeddingError.message);
             }
@@ -468,41 +482,55 @@ adminRouter.delete('/rag/document/:documentId', async (req, res) => {
     }
 
     try {
-        // 1. Delete associated chunks first (important for foreign key constraints)
+        // First, get the document's storage_path before deleting its record
+        const { data: doc, error: docSelectError } = await supabase
+            .from('knowledge_base_documents')
+            .select('storage_path')
+            .eq('id', documentId)
+            .single();
+
+        if (docSelectError || !doc) {
+            console.warn(`Document with ID ${documentId} not found for deletion, or error fetching it.`, docSelectError?.message);
+            // If it doesn't exist, maybe it was already deleted. We can return a success-like response.
+            return res.status(404).json({ message: 'Document not found.' });
+        }
+        
+        // 1. Delete associated chunks from the database
         const { error: chunkDeleteError } = await supabase
             .from('document_chunks')
             .delete()
             .eq('document_id', documentId);
 
         if (chunkDeleteError) {
-            console.error(`Error deleting chunks for document ${documentId}:`, chunkDeleteError.message);
-            // Decide if you want to stop or proceed to delete the main document entry
-            // For now, we'll throw to indicate the operation wasn't fully successful
             throw new Error(`Failed to delete document chunks: ${chunkDeleteError.message}`);
         }
 
-        // 2. Delete the document itself from knowledge_base_documents
-        const { data: docData, error: docDeleteError } = await supabase
+        // 2. Delete the document record from the database
+        const { error: docDeleteError } = await supabase
             .from('knowledge_base_documents')
             .delete()
-            .eq('id', documentId)
-            .select() // Optionally select to confirm what was deleted or if it existed
-            .single(); // Use .single() if you expect only one row, or remove if not needed
+            .eq('id', documentId);
 
         if (docDeleteError) {
-            console.error(`Error deleting document ${documentId}:`, docDeleteError.message);
-            throw new Error(`Failed to delete document: ${docDeleteError.message}`);
+            throw new Error(`Failed to delete document record: ${docDeleteError.message}`);
         }
 
-        if (!docData) {
-             // This means no document with that ID was found, could be a 404
-             console.log(`Document with ID ${documentId} not found for deletion.`);
-             return res.status(404).json({ message: 'Document not found.' });
+        // 3. Delete the actual file from Supabase Storage
+        if (doc.storage_path) {
+            const { error: storageError } = await supabase.storage
+                .from('momi-final')
+                .remove([doc.storage_path]);
+            
+            if (storageError) {
+                // Log the error but don't fail the whole request, as the DB records are already gone.
+                // This is a decision point: is an orphaned file in storage a critical failure?
+                // For user experience, it's better to report success but log the cleanup failure.
+                console.error(`CRITICAL: Failed to delete document file from storage: ${doc.storage_path}. Manual cleanup required.`, storageError.message);
+            }
         }
 
         res.status(200).json({ 
-            message: `Document (ID: ${documentId}) and its associated chunks deleted successfully.`,
-            deletedDocument: docData
+            message: `Document (ID: ${documentId}) and all associated data deleted successfully.`
         });
 
     } catch (error) {
@@ -811,6 +839,60 @@ adminRouter.put('/system-settings/momi-base-prompt', async (req, res) => {
     }
 });
 
+adminRouter.get('/system-settings/opening-message', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'opening_message')
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ error: 'Opening message setting not found.' });
+            }
+            throw error;
+        }
+        res.json({ opening_message: data.setting_value });
+    } catch (error) {
+        console.error('Error fetching opening message:', error);
+        res.status(500).json({ error: 'Failed to fetch opening message', details: error.message });
+    }
+});
+
+adminRouter.put('/system-settings/opening-message', async (req, res) => {
+    const { new_message_value } = req.body;
+
+    if (typeof new_message_value !== 'string' || new_message_value.trim() === '') {
+        return res.status(400).json({ error: 'New message value is required and must be a non-empty string.' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('system_settings')
+            .update({ setting_value: new_message_value, updated_at: new Date().toISOString() })
+            .eq('setting_key', 'opening_message')
+            .select()
+            .single();
+
+        if (error) {
+             if (error.code === 'PGRST116') {
+                return res.status(404).json({ error: 'Opening message setting not found to update.' });
+            }
+            throw error;
+        }
+        
+        if (!data) {
+            return res.status(404).json({ error: 'Opening message setting not found, update failed.' });
+        }
+
+        res.json({ message: 'Opening message updated successfully.', updated_setting: data });
+    } catch (error) {
+        console.error('Error updating opening message:', error);
+        res.status(500).json({ error: 'Failed to update opening message', details: error.message });
+    }
+});
+
 // --- User Management Routes for Admin ---
 
 // Get all registered users (from public.users and auth.users)
@@ -839,18 +921,15 @@ adminRouter.get('/users/registered', async (req, res) => {
     }
 });
 
-// Get all guest users
+// Get all guest users who have conversations
 adminRouter.get('/users/guests', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('guest_users')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
+        const { data, error } = await supabase.rpc('get_guest_users_with_conversations');
+
         if (error) throw error;
-        res.json(data);
+        res.json(data || []);
     } catch (error) {
-        console.error('Error fetching guest users:', error);
+        console.error('Error fetching guest users with conversations:', error);
         res.status(500).json({ error: 'Failed to fetch guest users', details: error.message });
     }
 });
@@ -1054,6 +1133,37 @@ adminRouter.get('/analytics/daily-active-users', async (req, res) => {
     } catch (error) {
         console.error('Error fetching daily active users:', error);
         res.status(500).json({ error: 'Failed to fetch daily active users', details: error.message });
+    }
+});
+
+// Delete multiple guest users in bulk
+adminRouter.post('/guests/bulk-delete', async (req, res) => {
+    const { guestIds } = req.body;
+
+    if (!Array.isArray(guestIds) || guestIds.length === 0) {
+        return res.status(400).json({ error: 'An array of guest IDs is required.' });
+    }
+
+    try {
+        // This is a complex operation and should be handled in a transaction
+        // if your database supported it easily through the client.
+        // Supabase RPC is the best way to do this atomically.
+        const { error } = await supabase.rpc('bulk_delete_guests', {
+            p_guest_ids: guestIds
+        });
+
+        if (error) {
+            console.error('Bulk delete RPC error:', error);
+            throw new Error(`Failed during bulk deletion: ${error.message}`);
+        }
+
+        res.status(200).json({ 
+            message: `${guestIds.length} guest users and their associated data have been deleted successfully.`
+        });
+
+    } catch (error) {
+        console.error('Error in bulk delete guest user endpoint:', error);
+        res.status(500).json({ error: error.message || 'Internal server error during bulk guest user deletion.' });
     }
 });
 
@@ -1320,6 +1430,35 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// --- Public Chat Settings Route ---
+app.get('/api/chat/settings', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'opening_message')
+            .single();
+
+        if (error || !data) {
+            // If it's not found or there's an error, send a default message
+            console.warn('Opening message not found in system_settings, using default.', error?.message);
+            return res.json({
+                openingMessage: "Hi there! I'm MOMi, your wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?"
+            });
+        }
+        
+        res.json({ openingMessage: data.setting_value });
+
+    } catch (error) {
+        console.error('Error fetching chat settings:', error);
+        res.status(500).json({ 
+            error: 'Could not load chat configuration.', 
+            // Send a default message on failure too
+            openingMessage: "Hi there! I'm MOMi, your wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?"
+        });
+    }
+});
+
 // --- Chat Routes ---
 app.post('/api/chat/message', async (req, res) => {
     const { conversationId, message, userId, guestUserId: initialGuestUserId, imageUrl } = req.body;
@@ -1408,29 +1547,9 @@ app.post('/api/chat/message', async (req, res) => {
             conversationState.updateState(userIdentifier, { user_status: state.user_status });
         }
 
-        // Handle first message greeting
-        let finalUserMessage = message;
-        if (state.is_first_message && !imageUrl) { // Only add greeting for text messages
-            const greeting = selectGreeting(state, message);
-            
-            // Concatenate greeting with user message
-            finalUserMessage = greeting + "\n\n" + message;
-            
-            // Update state
-            conversationState.updateState(userIdentifier, {
-                is_first_message: false,
-                greetings_shown: [...state.greetings_shown, greeting],
-                previous_greeting: greeting,
-                last_context: message
-            });
-            
-            console.log(`First message greeting for ${userIdentifier}: ${greeting}`);
-        } else {
-            // Update context for non-first messages
-            conversationState.updateState(userIdentifier, {
-                last_context: message
-            });
-        }
+        // The logic for dynamic greetings on first message has been moved to the client-side.
+        // The backend now focuses on processing the message.
+        const finalUserMessage = message;
 
         // 1. Create conversation if it doesn't exist
         if (!currentConversationId) {
@@ -1703,7 +1822,7 @@ app.post('/api/chat/message', async (req, res) => {
         const completion = await openai.chat.completions.create({
             model: imageUrl ? "gpt-4o" : "gpt-3.5-turbo",
             messages: openAIMessages,
-            max_tokens: imageUrl ? 500 : (ragContext ? 400 : 150) 
+            max_tokens: imageUrl ? 1024 : (ragContext ? 1200 : 1024) 
         });
 
         const momiResponseText = completion.choices[0].message.content;
@@ -1823,7 +1942,71 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route is working! Supra client: ' + (supabase ? 'OK' : 'FAIL') + ', OpenAI client: ' + (openai ? 'OK' : 'FAIL'), serviceKeySet: !!supabaseServiceKey });
 });
 
-app.listen(port, '0.0.0.0', () => {
+const setupDatabaseFunctions = async () => {
+    const functions = [
+        {
+            name: 'get_guest_users_with_conversations',
+            sql: `
+                CREATE OR REPLACE FUNCTION get_guest_users_with_conversations()
+                RETURNS TABLE(id uuid, created_at timestamptz, session_token text) AS $$
+                BEGIN
+                    RETURN QUERY
+                    SELECT gu.id, gu.created_at, gu.session_token
+                    FROM guest_users gu
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM conversations c
+                        WHERE c.guest_user_id = gu.id
+                    )
+                    ORDER BY gu.created_at DESC;
+                END;
+                $$ LANGUAGE plpgsql;
+            `
+        },
+        {
+            name: 'bulk_delete_guests',
+            sql: `
+                CREATE OR REPLACE FUNCTION bulk_delete_guests(p_guest_ids uuid[])
+                RETURNS void AS $$
+                DECLARE
+                    conv_ids uuid[];
+                BEGIN
+                    -- Find all conversations for the given guest IDs
+                    SELECT array_agg(id) INTO conv_ids
+                    FROM conversations
+                    WHERE guest_user_id = ANY(p_guest_ids);
+
+                    IF conv_ids IS NOT NULL THEN
+                        -- Delete messages for those conversations
+                        DELETE FROM messages WHERE conversation_id = ANY(conv_ids);
+                        -- Delete those conversations
+                        DELETE FROM conversations WHERE id = ANY(conv_ids);
+                    END IF;
+
+                    -- Finally, delete the guest users
+                    DELETE FROM guest_users WHERE id = ANY(p_guest_ids);
+                END;
+                $$ LANGUAGE plpgsql;
+            `
+        }
+    ];
+
+    for (const func of functions) {
+        try {
+            const { error } = await supabase.rpc('eval', { query: func.sql });
+            if (error) {
+                // Log error but don't throw, as it might already exist
+                console.warn(`Could not create/update DB function '${func.name}':`, error.message);
+            } else {
+                console.log(`Database function '${func.name}' is set up.`);
+            }
+        } catch (e) {
+            console.error(`Unexpected error setting up DB function '${func.name}':`, e.message);
+        }
+    }
+};
+
+app.listen(port, '0.0.0.0', async () => {
     console.log(`\n🚀 MOMi Backend Server Started Successfully!`);
     console.log(`====================================`);
     console.log(`📍 Server URL: http://0.0.0.0:${port}`);

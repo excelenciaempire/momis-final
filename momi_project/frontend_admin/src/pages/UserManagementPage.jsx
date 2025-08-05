@@ -15,6 +15,7 @@ const UserManagementPage = () => {
   const [isLoadingAction, setIsLoadingAction] = useState(false); // For delete operations
   const [notification, setNotification] = useState({ type: '', message: '' });
   const [messageChannel, setMessageChannel] = useState(null); // For Supabase Realtime subscription
+  const [selectedGuests, setSelectedGuests] = useState(new Set());
 
   const getToken = async () => {
     const sessionData = await supabase.auth.getSession();
@@ -218,8 +219,68 @@ const UserManagementPage = () => {
     setIsLoadingAction(false);
   };
 
+  const handleBulkDeleteGuests = async () => {
+    const guestIdsToDelete = Array.from(selectedGuests);
+    if (guestIdsToDelete.length === 0) {
+      setNotification({ type: 'info', message: 'No guests selected for deletion.' });
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${guestIdsToDelete.length} selected guest(s) and all their data? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsLoadingAction(true);
+    setNotification({ type: '', message: '' });
+    try {
+      const token = await getToken();
+      await axios.post('/api/admin/guests/bulk-delete', {
+        guestIds: guestIdsToDelete
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      setNotification({ type: 'success', message: `${guestIdsToDelete.length} guest(s) deleted successfully.` });
+      setSelectedGuests(new Set()); // Clear selection
+      fetchGuestUsers(); // Refresh the list
+
+      // If one of the deleted users was the currently selected user, clear the right panels
+      if (selectedUser && guestIdsToDelete.includes(selectedUser.id)) {
+        setSelectedUser(null);
+        setConversations([]);
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+
+    } catch (err) {
+      handleFetchError(err, 'Failed to perform bulk delete.');
+    }
+    setIsLoadingAction(false);
+  };
+
+  const handleGuestSelectionChange = (guestId) => {
+    setSelectedGuests(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(guestId)) {
+        newSelected.delete(guestId);
+      } else {
+        newSelected.add(guestId);
+      }
+      return newSelected;
+    });
+  };
+
   const renderUserItem = (user, type) => (
     <li key={user.id} className={`list-item ${selectedUser?.id === user.id && selectedUser?.type === type ? 'selected' : ''}`}>
+      {type === 'guest' && (
+        <input
+          type="checkbox"
+          className="item-checkbox"
+          checked={selectedGuests.has(user.id)}
+          onChange={() => handleGuestSelectionChange(user.id)}
+          onClick={(e) => e.stopPropagation()} // Prevent row selection when clicking checkbox
+        />
+      )}
       <span onClick={() => handleUserSelect(user, type)} className="item-selectable-content">
         {type === 'registered' ? (user.email || `User ID: ${user.id.substring(0,8)}...`) : `Guest ID: ${user.id.substring(0,8)}...`}
         <span className="date-info">(Created: {new Date(user.created_at).toLocaleDateString()})</span>
@@ -281,10 +342,21 @@ const UserManagementPage = () => {
 
       <div className="panels-grid">
         <div className="card list-panel">
-          <div className="card-header">{activeTab === 'registered' ? 'Registered Users' : 'Guest Users'}</div>
+          <div className="card-header">
+            <span>{activeTab === 'registered' ? 'Registered Users' : 'Guest Users'}</span>
+            {activeTab === 'guests' && selectedGuests.size > 0 && (
+              <button
+                onClick={handleBulkDeleteGuests}
+                className="button danger small-button"
+                disabled={isLoadingAction}
+              >
+                Delete Selected ({selectedGuests.size})
+              </button>
+            )}
+          </div>
           {(isLoading && !selectedUser && users.length === 0 && guests.length === 0) && <p className="loading-text">Loading users...</p>}
           {(activeTab === 'registered' && users.length === 0 && !isLoading) && <p className="empty-text">No registered users found.</p>}
-          {(activeTab === 'guests' && guests.length === 0 && !isLoading) && <p className="empty-text">No guest users found.</p>}
+          {(activeTab === 'guests' && guests.length === 0 && !isLoading) && <p className="empty-text">No guest users with conversations found.</p>}
           <ul className="item-list">
             {activeTab === 'registered' && users.map(user => renderUserItem(user, 'registered'))}
             {activeTab === 'guests' && guests.map(guest => renderUserItem(guest, 'guest'))}

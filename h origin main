@@ -1,0 +1,9 @@
+[33mcommit e9523005f7f9b6a793695b47d73ad6019814d17d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: excelenciaempire <excelenciaempire@github.com>
+Date:   Wed Jul 9 15:49:47 2025 +0000
+
+    fix: Update KB health check to properly detect vector extension in Supabase
+    
+    - Fixed extension name check (vector not pgvector)
+    - Added comprehensive function cleanup script
+    - Improved error messages and fallback checks
