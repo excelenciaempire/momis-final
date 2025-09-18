@@ -115,7 +115,8 @@ function App() {
   }
 
   // Only show loading on initial app load, not after login
-  if (loading && !authChecked) {
+  // Only show loading on very first app load
+  if (!authChecked) {
     return (
       <div className="app-loading">
         <div className="loading-container">

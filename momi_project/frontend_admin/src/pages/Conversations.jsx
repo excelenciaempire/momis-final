@@ -9,6 +9,7 @@ const Conversations = () => {
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     fetchConversations();
@@ -18,11 +19,11 @@ const Conversations = () => {
     try {
       setLoading(true);
       setError('');
-      // We'll need to get all conversations from the conversations table
-      const response = await apiClient.get('/admin/analytics/summary');
-      // For now, we'll show a placeholder until we implement the full conversations endpoint
-      setConversations([]);
+      const response = await apiClient.get('/admin/conversations');
+      setConversations(response.data || []);
+      setLastUpdated(new Date());
     } catch (err) {
+      console.error('Error fetching conversations:', err);
       setError(err.response?.data?.error || 'Failed to fetch conversations.');
     } finally {
       setLoading(false);
@@ -63,7 +64,22 @@ const Conversations = () => {
       
       <div className="conversations-container">
         <div className="conversations-list">
-          <h3>All Conversations</h3>
+          <div className="conversations-header">
+            <h3>All Conversations</h3>
+            <button 
+              onClick={fetchConversations} 
+              disabled={loading}
+              className="btn-refresh"
+              title="Refresh conversations"
+            >
+              {loading ? '🔄' : '↻'} Refresh
+            </button>
+          </div>
+          {lastUpdated && (
+            <p className="last-updated">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
           {conversations.length === 0 && !loading && (
             <p className="no-data">No conversations found. Users haven't started chatting yet.</p>
           )}
@@ -77,8 +93,12 @@ const Conversations = () => {
               }}
             >
               <div className="conv-header">
-                <span className="conv-user">{conv.user_email || 'Unknown User'}</span>
+                <span className="conv-user">{conv.user_name || conv.user_email || 'Unknown User'}</span>
                 <span className="conv-date">{new Date(conv.created_at).toLocaleDateString()}</span>
+              </div>
+              <div className="conv-meta">
+                <span className="conv-email">{conv.user_email}</span>
+                <span className="conv-messages">{conv.message_count || 0} messages</span>
               </div>
               <div className="conv-preview">{conv.last_message_preview || 'No messages yet'}</div>
             </div>

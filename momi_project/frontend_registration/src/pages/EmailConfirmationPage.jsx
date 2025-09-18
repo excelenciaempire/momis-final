@@ -96,6 +96,8 @@ const EmailConfirmationPage = () => {
           <h1 className="confirmation-title">Check Your Email!</h1>
           <p className="confirmation-subtitle">
             We've sent you a confirmation email to complete your MOMi registration.
+            <br /><br />
+            <strong>Note:</strong> If email confirmation is disabled, you can go directly to <a href="/login">login</a> and start using MOOMi.
           </p>
 
           <div className="confirmation-steps">

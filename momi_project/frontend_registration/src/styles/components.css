@@ -176,6 +176,27 @@
   position: relative;
 }
 
+.login-form .btn {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-form .btn:active {
+  transform: translateY(1px);
+}
+
+.login-form .btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.3);
+}
+
 .password-toggle-btn {
   position: absolute;
   right: var(--spacing-3);

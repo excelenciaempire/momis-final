@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { supabase } = require('../utils/supabaseClient');
 const { OpenAI } = require('openai');
 const authUser = require('../middleware/authUser');
@@ -6,6 +7,22 @@ const conversationState = require('../utils/conversationState');
 const { startQuiz, answerQuiz, getQuizStatus } = require('../controllers/quiz');
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -514,5 +531,98 @@ router.post('/reset-session', authUser, async (req, res) => {
 router.post('/quiz/start', authUser, startQuiz);
 router.post('/quiz/answer', authUser, answerQuiz);
 router.post('/quiz/status', authUser, getQuizStatus);
+
+// Upload image endpoint
+router.post('/upload-image', authUser, upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image file provided' });
+        }
+
+        const user = req.user;
+        const fileName = `${user.id}/${Date.now()}-${req.file.originalname}`;
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+            .from('chat-images')
+            .upload(fileName, req.file.buffer, {
+                contentType: req.file.mimetype,
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (error) {
+            console.error('Supabase storage error:', error);
+            return res.status(500).json({ error: 'Failed to upload image', details: error.message });
+        }
+
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage
+            .from('chat-images')
+            .getPublicUrl(fileName);
+
+        res.json({ 
+            imageUrl: publicUrlData.publicUrl,
+            message: 'Image uploaded successfully'
+        });
+
+    } catch (error) {
+        console.error('Image upload error:', error);
+        res.status(500).json({ error: 'Failed to upload image', details: error.message });
+    }
+});
+
+// Speech to text endpoint
+router.post('/speech-to-text', authUser, upload.single('audio'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No audio file provided' });
+        }
+
+        // Create a temporary file for OpenAI Whisper
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        
+        const tempDir = os.tmpdir();
+        const tempFileName = `audio_${Date.now()}.webm`;
+        const tempFilePath = path.join(tempDir, tempFileName);
+        
+        // Write buffer to temporary file
+        fs.writeFileSync(tempFilePath, req.file.buffer);
+        
+        try {
+            // Use OpenAI Whisper for transcription
+            const transcription = await openai.audio.transcriptions.create({
+                file: fs.createReadStream(tempFilePath),
+                model: 'whisper-1',
+                language: 'es', // Spanish
+                response_format: 'text'
+            });
+
+            // Clean up temporary file
+            fs.unlinkSync(tempFilePath);
+
+            res.json({ 
+                transcript: transcription,
+                message: 'Audio transcribed successfully'
+            });
+
+        } catch (transcriptionError) {
+            // Clean up temporary file on error
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
+            throw transcriptionError;
+        }
+
+    } catch (error) {
+        console.error('Speech to text error:', error);
+        res.status(500).json({ 
+            error: 'Failed to transcribe audio', 
+            details: error.message 
+        });
+    }
+});
 
 module.exports = router;

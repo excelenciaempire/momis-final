@@ -296,8 +296,12 @@ a:hover {
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
-  min-height: 44px; /* Ensure touch target size */
+  min-height: 44px;
   gap: var(--spacing-2);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .btn:disabled {
@@ -314,6 +318,16 @@ a:hover {
   background-color: var(--magenta-vibrant);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.3);
 }
 
 .btn-secondary {
@@ -971,6 +985,133 @@ a:hover {
   color: white;
 }
 
+/* Image Preview Styles */
+.image-preview-container {
+  padding: var(--spacing-3);
+  background: var(--white);
+  border-top: 1px solid var(--gray-light);
+  margin-bottom: 0;
+}
+
+.image-preview-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
+}
+
+.image-preview {
+  width: 100%;
+  max-width: 200px;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--purple-light);
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-image-btn:hover {
+  background: #c82333;
+  transform: scale(1.1);
+}
+
+.image-preview-text {
+  margin: var(--spacing-2) 0 0 0;
+  color: var(--purple-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+/* Message Image Styles */
+.message-image {
+  margin-bottom: var(--spacing-2);
+}
+
+.message-img {
+  max-width: 250px;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-light);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.message-img:hover {
+  transform: scale(1.02);
+}
+
+/* Voice Recording Styles */
+.voice-btn.recording {
+  background: #dc3545 !important;
+  color: white !important;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.attachment-btn.disabled,
+.voice-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.send-btn-fullwidth.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Enhanced Input Controls */
+.input-controls {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+.attachment-btn,
+.voice-btn {
+  background: var(--purple-light);
+  color: var(--purple-primary);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.attachment-btn:hover:not(.disabled),
+.voice-btn:hover:not(.disabled) {
+  background: var(--purple-primary);
+  color: white;
+  transform: translateY(-1px);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .chat-container-fullwidth {
@@ -1061,7 +1202,23 @@ a:hover {
   }
   
   .input-controls {
-    display: none; /* Hide attachment buttons on very small screens */
+    gap: var(--spacing-1);
+  }
+  
+  .attachment-btn,
+  .voice-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .image-preview {
+    max-width: 150px;
+    max-height: 120px;
+  }
+  
+  .message-img {
+    max-width: 200px;
+    max-height: 150px;
   }
   
   .messages-area {

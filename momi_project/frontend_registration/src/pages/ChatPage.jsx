@@ -12,7 +12,13 @@ const ChatPage = ({ user, userProfile }) => {
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState(null)
+  const [isTranscribing, setIsTranscribing] = useState(false)
   const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     initializeChat()
@@ -102,25 +108,31 @@ const ChatPage = ({ user, userProfile }) => {
     }
   }
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isSending) return
+  const sendMessage = async (messageText = inputText, imageFile = selectedImage) => {
+    if ((!messageText?.trim() && !imageFile) || isSending) return
     
     if (!isOnline) {
       toast.error('No internet connection. Please check your network and try again.')
       return
     }
 
+    // Create user message
     const userMessage = {
       id: Date.now(),
       sender_type: 'user',
-      content: inputText,
-      timestamp: new Date().toISOString()
+      content: messageText || (imageFile ? '[Image]' : ''),
+      timestamp: new Date().toISOString(),
+      image: imageFile ? imagePreview : null
     }
 
     setMessages(prev => [...prev, userMessage])
     setIsSending(true)
-    const messageText = inputText
+    
+    // Clear inputs
     setInputText('')
+    setSelectedImage(null)
+    setImagePreview('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
 
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token
@@ -129,15 +141,35 @@ const ChatPage = ({ user, userProfile }) => {
         throw new Error('No authentication token available')
       }
 
-      const response = await axios.post('/api/chat/message', {
+      let requestData = {
         message: messageText,
         conversationId: conversationId
-      }, {
+      }
+
+      // Handle image upload
+      if (imageFile) {
+        const formData = new FormData()
+        formData.append('image', imageFile)
+        formData.append('message', messageText || '')
+        formData.append('conversationId', conversationId || '')
+
+        const uploadResponse = await axios.post('/api/chat/upload-image', formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 60000 // 60 second timeout for image upload
+        })
+
+        requestData.imageUrl = uploadResponse.data.imageUrl
+      }
+
+      const response = await axios.post('/api/chat/message', requestData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 second timeout
+        timeout: 30000
       })
 
       const momiMessage = {
@@ -155,7 +187,6 @@ const ChatPage = ({ user, userProfile }) => {
     } catch (error) {
       console.error('Error sending message:', error)
       
-      // Add error message to chat
       const errorMessage = {
         id: Date.now() + 1,
         sender_type: 'momi',
@@ -248,6 +279,105 @@ const ChatPage = ({ user, userProfile }) => {
     }
   }
 
+  // Image handling functions
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('Image size must be less than 10MB')
+        return
+      }
+      
+      setSelectedImage(file)
+      const reader = new FileReader()
+      reader.onload = (e) => setImagePreview(e.target.result)
+      reader.readAsDataURL(file)
+      toast.success('Image selected! Add a message or send as is.')
+    } else {
+      toast.error('Please select a valid image file')
+    }
+  }
+
+  const removeImage = () => {
+    setSelectedImage(null)
+    setImagePreview('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Voice recording functions
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      const audioChunks = []
+
+      recorder.ondataavailable = (event) => {
+        audioChunks.push(event.data)
+      }
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+        await transcribeAudio(audioBlob)
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      recorder.start()
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+      toast.success('Recording started! Tap again to stop.')
+    } catch (error) {
+      console.error('Error starting recording:', error)
+      toast.error('Unable to access microphone. Please check permissions.')
+    }
+  }
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop()
+      setIsRecording(false)
+      setIsTranscribing(true)
+      toast.info('Processing your voice message...')
+    }
+  }
+
+  const transcribeAudio = async (audioBlob) => {
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioBlob, 'voice-message.webm')
+      
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const response = await axios.post('/api/chat/speech-to-text', formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 30000
+      })
+
+      const transcript = response.data.transcript
+      if (transcript?.trim()) {
+        // Send the transcribed message
+        await sendMessage(transcript, selectedImage)
+        toast.success('Voice message sent!')
+      } else {
+        toast.error('Could not understand the audio. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error transcribing audio:', error)
+      toast.error('Failed to process voice message. Please try again.')
+    } finally {
+      setIsTranscribing(false)
+    }
+  }
+
+  const handleVoiceClick = () => {
+    if (isRecording) {
+      stopVoiceRecording()
+    } else {
+      startVoiceRecording()
+    }
+  }
+
   return (
     <div className="chat-page-fullscreen">
       {/* Compact Header */}
@@ -296,6 +426,11 @@ const ChatPage = ({ user, userProfile }) => {
                 )}
               </div>
               <div className="message-content">
+                {message.image && (
+                  <div className="message-image">
+                    <img src={message.image} alt="Shared image" className="message-img" />
+                  </div>
+                )}
                 <div className="message-text">{message.content}</div>
                 <div className="message-timestamp">
                   {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -318,23 +453,64 @@ const ChatPage = ({ user, userProfile }) => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="image-preview-container">
+            <div className="image-preview-wrapper">
+              <img src={imagePreview} alt="Selected" className="image-preview" />
+              <button onClick={removeImage} className="remove-image-btn" title="Remove image">
+                ×
+              </button>
+            </div>
+            <p className="image-preview-text">Image ready to send</p>
+          </div>
+        )}
+
         {/* Full-Width Input Area */}
         <div className="input-area-fullwidth">
           <div className="input-controls">
-            <button className="attachment-btn" title="Upload Image">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              id="image-upload"
+            />
+            <label 
+              htmlFor="image-upload" 
+              className={`attachment-btn ${isSending || isRecording || isTranscribing ? 'disabled' : ''}`} 
+              title="Upload Image"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                 <polyline points="21,15 16,10 5,21"></polyline>
               </svg>
-            </button>
-            <button className="voice-btn" title="Voice Message">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="8" y1="23" x2="16" y2="23"></line>
-              </svg>
+            </label>
+            <button 
+              className={`voice-btn ${isRecording ? 'recording' : ''} ${isSending || isTranscribing ? 'disabled' : ''}`} 
+              onClick={handleVoiceClick}
+              disabled={isSending || isTranscribing}
+              title={isRecording ? 'Stop recording' : (isTranscribing ? 'Processing...' : 'Voice message')}
+            >
+              {isRecording ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                </svg>
+              ) : isTranscribing ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              )}
             </button>
           </div>
           <div className="input-main">
@@ -348,10 +524,16 @@ const ChatPage = ({ user, userProfile }) => {
               disabled={isSending}
             />
             <button
-              onClick={sendMessage}
-              disabled={!inputText.trim() || isSending || !isOnline}
-              className={`send-btn-fullwidth ${!isOnline ? 'offline' : ''}`}
-              title={!isOnline ? 'No internet connection' : 'Send message'}
+              onClick={() => sendMessage()}
+              disabled={(!inputText.trim() && !selectedImage) || isSending || !isOnline || isRecording || isTranscribing}
+              className={`send-btn-fullwidth ${!isOnline ? 'offline' : ''} ${isSending || isRecording || isTranscribing ? 'loading' : ''}`}
+              title={
+                !isOnline ? 'No internet connection' : 
+                isRecording ? 'Recording in progress' :
+                isTranscribing ? 'Processing voice message' :
+                isSending ? 'Sending...' : 
+                'Send message'
+              }
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>

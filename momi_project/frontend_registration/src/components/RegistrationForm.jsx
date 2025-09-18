@@ -213,11 +213,32 @@ const RegistrationForm = ({ onSuccess }) => {
         }
       }, 2000) // Wait 2 seconds for trigger to create basic profile
 
-      // Store email for resend functionality
-      localStorage.setItem('pendingConfirmationEmail', data.email)
-      
-      // Redirect to email confirmation page
-      window.location.href = '/email-confirmation'
+      // Check if user is immediately confirmed (email confirmation disabled)
+      if (authData.session && authData.user && authData.user.email_confirmed_at) {
+        // Email confirmation is disabled or already confirmed, user is ready to use the app
+        toast.success('Account created successfully! Welcome to MOOMi!')
+        
+        // Clear any stored email
+        localStorage.removeItem('pendingConfirmationEmail')
+        
+        // Redirect directly to chat
+        window.location.href = '/chat'
+      } else if (authData.user && !authData.user.email_confirmed_at) {
+        // Email confirmation is required but not yet confirmed
+        toast.success('Account created! Please check your email to confirm your account.')
+        // Store email for potential resend functionality
+        localStorage.setItem('pendingConfirmationEmail', data.email)
+        window.location.href = '/email-confirmation'
+      } else {
+        // Fallback case - assume email confirmation is disabled
+        toast.success('Account created successfully! Welcome to MOOMi!')
+        
+        // Clear any stored email
+        localStorage.removeItem('pendingConfirmationEmail')
+        
+        // Redirect directly to chat
+        window.location.href = '/chat'
+      }
 
     } catch (error) {
       console.error('Registration error:', error)

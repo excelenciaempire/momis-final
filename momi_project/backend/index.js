@@ -1135,6 +1135,60 @@ adminRouter.get('/guests/:guestUserId/conversations', async (req, res) => {
     }
 });
 
+// Get all conversations (admin version)
+adminRouter.get('/conversations', async (req, res) => {
+    try {
+        // Get conversations with user profile information and message counts
+        const { data: conversations, error } = await supabase
+            .from('conversations')
+            .select(`
+                *,
+                user_profiles(email, first_name, last_name)
+            `)
+            .not('user_id', 'is', null)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Enhance conversations with message counts and last message
+        const enhancedConversations = await Promise.all(
+            conversations.map(async (conv) => {
+                // Get message count
+                const { count, error: countError } = await supabase
+                    .from('messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('conversation_id', conv.id);
+
+                // Get last message
+                const { data: lastMessage, error: msgError } = await supabase
+                    .from('messages')
+                    .select('content, timestamp, sender_type')
+                    .eq('conversation_id', conv.id)
+                    .order('timestamp', { ascending: false })
+                    .limit(1);
+
+                const lastMsg = lastMessage && lastMessage.length > 0 ? lastMessage[0] : null;
+                
+                return {
+                    ...conv,
+                    message_count: count || 0,
+                    last_message_preview: lastMsg ? 
+                        (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content) : 
+                        'No messages yet',
+                    last_message_at: lastMsg ? lastMsg.timestamp : conv.created_at,
+                    user_email: conv.user_profiles?.email || 'Unknown User',
+                    user_name: conv.user_profiles ? `${conv.user_profiles.first_name} ${conv.user_profiles.last_name}`.trim() : 'Unknown User'
+                };
+            })
+        );
+
+        res.json(enhancedConversations);
+    } catch (error) {
+        console.error('Error fetching all conversations:', error);
+        res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
+    }
+});
+
 // Get messages for a specific conversation (admin version)
 adminRouter.get('/conversations/:conversationId/messages', async (req, res) => {
     const { conversationId } = req.params;
