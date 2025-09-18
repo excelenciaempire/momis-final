@@ -1630,3 +1630,20 @@ a:hover {
   color: var(--purple-primary);
   font-weight: 500;
 }
+
+.email-tips {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background-color: var(--purple-light);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--purple-primary);
+}
+
+.email-tips p {
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-sm);
+}
+
+.email-tips p:last-child {
+  margin-bottom: 0;
+}

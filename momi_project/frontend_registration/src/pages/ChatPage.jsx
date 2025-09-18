@@ -49,16 +49,24 @@ const ChatPage = ({ user, userProfile }) => {
   const initializeChat = async () => {
     try {
       // Get welcome message
-      const response = await axios.get('/api/chat/settings')
+      const userName = userProfile?.first_name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there'
       const welcomeMessage = {
         id: Date.now(),
         sender_type: 'momi',
-        content: `Hi ${userProfile?.first_name || 'there'}! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
+        content: `Hi ${userName}! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
         timestamp: new Date().toISOString()
       }
       setMessages([welcomeMessage])
     } catch (error) {
       console.error('Error initializing chat:', error)
+      // Fallback welcome message
+      const welcomeMessage = {
+        id: Date.now(),
+        sender_type: 'momi',
+        content: `Hi there! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
+        timestamp: new Date().toISOString()
+      }
+      setMessages([welcomeMessage])
     }
   }
 
@@ -248,7 +256,7 @@ const ChatPage = ({ user, userProfile }) => {
           <img src="/momi-icon-2.png" alt="MOMi" className="header-logo" />
           <div className="header-info">
             <h2>MOMi</h2>
-            <span>Welcome, {userProfile?.first_name || 'Usuario'}!</span>
+            <span>Welcome, {userProfile?.first_name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'}!</span>
           </div>
         </div>
         <div className="header-right">
@@ -284,7 +292,7 @@ const ChatPage = ({ user, userProfile }) => {
                 {message.sender_type === 'momi' ? (
                   <img src="/momi-icon-2.png" alt="MOMi" />
                 ) : (
-                  <div className="user-avatar">{userProfile?.first_name?.[0] || 'U'}</div>
+                  <div className="user-avatar">{userProfile?.first_name?.[0] || user?.user_metadata?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}</div>
                 )}
               </div>
               <div className="message-content">

@@ -22,7 +22,7 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    // Check initial session
+    // Check initial session quickly
     checkUserSession()
 
     // Listen for auth changes
@@ -30,14 +30,19 @@ function App() {
       console.log('Auth state changed:', event, session?.user?.email)
 
       if (event === 'SIGNED_IN' && session?.user) {
-        await loadUserData(session.user)
+        // Set user immediately and load profile in background
+        setUser(session.user)
+        setLoading(false)
+        setAuthChecked(true)
+        
+        // Load profile asynchronously
+        loadUserProfile(session.user)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setUserProfile(null)
         setLoading(false)
+        setAuthChecked(true)
       }
-
-      setAuthChecked(true)
     })
 
     return () => {
@@ -47,11 +52,12 @@ function App() {
 
   const checkUserSession = async () => {
     try {
-      setLoading(true)
       const currentUser = await getCurrentUser()
 
       if (currentUser) {
-        await loadUserData(currentUser)
+        setUser(currentUser)
+        // Load profile asynchronously
+        loadUserProfile(currentUser)
       }
     } catch (error) {
       console.error('Error checking user session:', error)
@@ -61,15 +67,13 @@ function App() {
     }
   }
 
-  const loadUserData = async (authUser) => {
+  const loadUserProfile = async (authUser) => {
     try {
       const profile = await getUserProfile(authUser.id)
-      setUser(authUser)
       setUserProfile(profile)
     } catch (error) {
-      console.error('Error loading user data:', error)
-      // If profile loading fails, create a basic profile and continue
-      setUser(authUser)
+      console.error('Error loading user profile:', error)
+      // Create a basic profile if loading fails
       setUserProfile({
         auth_user_id: authUser.id,
         email: authUser.email,
@@ -86,18 +90,32 @@ function App() {
 
   const handleRegistrationSuccess = async (authUser, profileData) => {
     console.log('Registration successful:', authUser.email)
-    // User data will be loaded via auth state change listener
-    // Redirect will happen in the routing logic
+    setUser(authUser)
+    setUserProfile(profileData)
+    setLoading(false)
+    setAuthChecked(true)
   }
 
   const handleLoginSuccess = async (authUser, profileData) => {
     console.log('Login successful:', authUser.email)
-    // User data will be loaded via auth state change listener
-    // Redirect will happen in the routing logic
+    setUser(authUser)
+    setUserProfile(profileData || {
+      auth_user_id: authUser.id,
+      email: authUser.email,
+      first_name: authUser.user_metadata?.first_name || 'User',
+      last_name: authUser.user_metadata?.last_name || '',
+      family_roles: [],
+      children_count: 0,
+      main_concerns: [],
+      dietary_preferences: [],
+      personalized_support: false
+    })
+    setLoading(false)
+    setAuthChecked(true)
   }
 
-  // Show loading spinner while checking authentication
-  if (loading || !authChecked) {
+  // Only show loading on initial app load, not after login
+  if (loading && !authChecked) {
     return (
       <div className="app-loading">
         <div className="loading-container">
@@ -183,7 +201,7 @@ function App() {
           <Route
             path="/chat"
             element={
-              user && userProfile ? (
+              user ? (
                 <ChatPage user={user} userProfile={userProfile} />
               ) : (
                 <Navigate to="/login" replace />

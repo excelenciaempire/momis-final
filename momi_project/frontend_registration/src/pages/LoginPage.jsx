@@ -79,6 +79,8 @@ const LoginPage = ({ onLoginSuccess }) => {
           if (onLoginSuccess) {
             onLoginSuccess(authData.user, null)
           }
+          // Force immediate redirect even without profile
+          window.location.href = '/chat'
           return
         }
         
@@ -89,10 +91,13 @@ const LoginPage = ({ onLoginSuccess }) => {
 
       toast.success(`Welcome back, ${profile.first_name}!`)
 
-      // Call success callback
+      // Call success callback and redirect immediately
       if (onLoginSuccess) {
         onLoginSuccess(authData.user, profile)
       }
+      
+      // Force immediate redirect to chat
+      window.location.href = '/chat'
 
     } catch (error) {
       console.error('Unexpected login error:', error)

@@ -213,6 +213,9 @@ const RegistrationForm = ({ onSuccess }) => {
         }
       }, 2000) // Wait 2 seconds for trigger to create basic profile
 
+      // Store email for resend functionality
+      localStorage.setItem('pendingConfirmationEmail', data.email)
+      
       // Redirect to email confirmation page
       window.location.href = '/email-confirmation'
 
