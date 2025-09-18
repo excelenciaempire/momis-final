@@ -149,17 +149,17 @@ const ChatPage = ({ user, userProfile }) => {
   }
 
   return (
-    <div className="chat-page">
-      {/* Header with hamburger menu */}
-      <div className="chat-header">
-        <div className="user-info">
-          <img src="/momi-icon-2.png" alt="MOMi" className="momi-avatar" />
-          <div className="user-details">
-            <h3>Welcome, {userProfile?.first_name || 'Usuario'}!</h3>
-            <p>Your personalized wellness assistant is ready</p>
+    <div className="chat-page-fullscreen">
+      {/* Compact Header */}
+      <div className="chat-header-compact">
+        <div className="header-left">
+          <img src="/momi-icon-2.png" alt="MOMi" className="header-logo" />
+          <div className="header-info">
+            <h2>MOMi</h2>
+            <span>Welcome, {userProfile?.first_name || 'Usuario'}!</span>
           </div>
         </div>
-        <div className="header-actions">
+        <div className="header-right">
           <button
             onClick={() => {
               setIsMenuOpen(!isMenuOpen)
@@ -174,20 +174,20 @@ const ChatPage = ({ user, userProfile }) => {
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </button>
-          <button onClick={startNewConversation} className="btn btn-secondary btn-small">
+          <button onClick={startNewConversation} className="new-chat-btn-header">
             New Chat
           </button>
-          <button onClick={handleLogout} className="btn btn-outline btn-small">
+          <button onClick={handleLogout} className="logout-btn-header">
             Logout
           </button>
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="chat-main">
-        <div className="messages-container">
+      {/* Full-Width Chat Container */}
+      <div className="chat-container-fullwidth">
+        <div className="messages-area">
           {messages.map((message) => (
-            <div key={message.id} className={`message ${message.sender_type}`}>
+            <div key={message.id} className={`message-bubble ${message.sender_type}`}>
               <div className="message-avatar">
                 {message.sender_type === 'momi' ? (
                   <img src="/momi-icon-2.png" alt="MOMi" />
@@ -197,14 +197,14 @@ const ChatPage = ({ user, userProfile }) => {
               </div>
               <div className="message-content">
                 <div className="message-text">{message.content}</div>
-                <div className="message-time">
+                <div className="message-timestamp">
                   {new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </div>
               </div>
             </div>
           ))}
           {isSending && (
-            <div className="message momi">
+            <div className="message-bubble momi">
               <div className="message-avatar">
                 <img src="/momi-icon-2.png" alt="MOMi" />
               </div>
@@ -218,22 +218,39 @@ const ChatPage = ({ user, userProfile }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="input-container">
-          <div className="input-wrapper">
+        {/* Full-Width Input Area */}
+        <div className="input-area-fullwidth">
+          <div className="input-controls">
+            <button className="attachment-btn" title="Upload Image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21,15 16,10 5,21"></polyline>
+              </svg>
+            </button>
+            <button className="voice-btn" title="Voice Message">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+          <div className="input-main">
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message..."
-              className="message-input"
+              className="message-input-fullwidth"
               rows="1"
               disabled={isSending}
             />
             <button
               onClick={sendMessage}
               disabled={!inputText.trim() || isSending}
-              className="send-button"
+              className="send-btn-fullwidth"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
