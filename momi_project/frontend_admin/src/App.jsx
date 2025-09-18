@@ -6,6 +6,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import ManageDocumentsPage from './pages/ManageDocumentsPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import UserManagementPage from './pages/UserManagementPage';
+import RegisteredUsersPage from './pages/RegisteredUsersPage';
 import KnowledgeBaseSettingsPage from './pages/KnowledgeBaseSettingsPage';
 import './App.css'; // General admin styles
 
@@ -45,8 +46,12 @@ const AdminLayout = ({ session }) => {
       <nav className="admin-nav">
         <div className="admin-nav-header">MOMi Admin</div>
         <NavLink to="/" end>Dashboard</NavLink>
+
+        {/* User Management Section */}
+        <div className="nav-section-header">Users</div>
+        <NavLink to="/users">Registered Users</NavLink>
         <NavLink to="/conversations">Conversations</NavLink>
-        
+
         {/* Knowledge Section Links */}
         <div className="nav-section-header">Knowledge</div> 
         <NavLink to="/knowledge/documents">Manage Documents</NavLink>
@@ -137,6 +142,7 @@ function App() {
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route element={<ProtectedRoute session={session} userRole={userRole} />}>
             <Route path="/" element={<AnalyticsPage />} />
+            <Route path="/users" element={<RegisteredUsersPage />} />
             <Route path="/conversations" element={<UserManagementPage />} />
             <Route path="/knowledge/documents" element={<ManageDocumentsPage />} />
             <Route path="/knowledge/kb-settings" element={<KnowledgeBaseSettingsPage />} />

@@ -7,7 +7,10 @@ const multer = require('multer'); // For file uploads
 const path = require('path');
 const fs = require('fs'); // Needed for OpenAI SDK to read file from path for Whisper
 const pdf = require('pdf-parse'); // For PDF text extraction
-const authAdmin = require('./middleware/authAdmin'); // Import admin auth middleware
+const { authAdmin, requirePermission } = require('./middleware/authAdmin'); // Import admin auth middleware
+const authUser = require('./middleware/authUser'); // Import user auth middleware
+const adminAuthRoutes = require('./routes/adminAuth'); // Import admin auth routes
+// const chatRoutes = require('./routes/chat'); // Import chat routes - keep disabled for now
 const axios = require('axios'); // Added for image URL to Data URI conversion
 const cors = require('cors'); // <-- ADD THIS LINE
 const conversationState = require('./utils/conversationState'); // Import conversation state manager
@@ -1294,11 +1297,17 @@ adminRouter.delete('/conversations/:conversationId', async (req, res) => {
     }
 });
 
-// Mount the admin router under /api/admin
+// Mount the admin authentication routes
+app.use('/api/admin/auth', adminAuthRoutes);
+
+// Mount the chat routes (protected with user authentication)
+// app.use('/api/chat', chatRoutes); // Keep disabled for now - using inline routes
+
+// Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
-// --- Image Upload Route ---
-app.post('/api/chat/upload', imageUpload.single('image'), async (req, res) => {
+// --- Image Upload Route (Protected) ---
+app.post('/api/chat/upload', /* authUser, */ imageUpload.single('image'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No image file provided.' });
     }

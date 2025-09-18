@@ -23,6 +23,30 @@ run = ["sh", "-c", "cd momi_project && npm start"]
 localPort = 3001
 externalPort = 80
 
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 11571
+externalPort = 3001
+exposeLocalhost = true
+
+[[ports]]
+localPort = 16631
+externalPort = 3000
+exposeLocalhost = true
+
+[[ports]]
+localPort = 62463
+externalPort = 3003
+exposeLocalhost = true
+
+[[ports]]
+localPort = 65063
+externalPort = 3002
+exposeLocalhost = true
+
 [workflow]
 [workflow.default]
 name = "Build and Run"
@@ -53,3 +77,6 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd momi_project && npm install && npm run dev"
+
+[agent]
+expertMode = true

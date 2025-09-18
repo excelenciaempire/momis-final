@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(env)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" npx -y @supabase/mcp-server-supabase --project-ref=qohvdyqsulzzdtvavpgz --help)",
+      "Bash(curl:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" npx -y @supabase/mcp-server-supabase --project-ref=qohvdyqsulzzdtvavpgz)",
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "Bash(npm audit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

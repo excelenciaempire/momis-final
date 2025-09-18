@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import supabase from './supabaseClient'; // Ensure this is correctly configured
+import { supabase } from './supabaseClient'; // Ensure this is correctly configured
 import ChatWindow from './components/ChatWindow';
 import './App.css';
 
