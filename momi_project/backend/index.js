@@ -410,6 +410,48 @@ adminRouter.get('/rag/documents', async (req, res) => {
     }
 });
 
+// Get document content by reconstructing from chunks
+adminRouter.get('/rag/document/:documentId/content', async (req, res) => {
+    const { documentId } = req.params;
+    
+    try {
+        // Get document info
+        const { data: doc, error: docError } = await supabase
+            .from('knowledge_base_documents')
+            .select('file_name, file_type, uploaded_at')
+            .eq('id', documentId)
+            .single();
+            
+        if (docError || !doc) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+        
+        // Get all chunks for this document
+        const { data: chunks, error: chunksError } = await supabase
+            .from('document_chunks')
+            .select('chunk_text, metadata')
+            .eq('document_id', documentId)
+            .order('metadata->chunkIndex', { ascending: true });
+            
+        if (chunksError) {
+            throw chunksError;
+        }
+        
+        // Reconstruct content from chunks
+        const content = chunks.map(chunk => chunk.chunk_text).join('\n\n');
+        
+        res.json({
+            document: doc,
+            content: content,
+            totalChunks: chunks.length
+        });
+        
+    } catch (error) {
+        console.error('Error fetching document content:', error);
+        res.status(500).json({ error: 'Failed to fetch document content', details: error.message });
+    }
+});
+
 adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No document file provided.' });
     // Service key check is implicitly handled by middleware or Supabase client config for admin operations
@@ -948,26 +990,91 @@ adminRouter.put('/system-settings/opening-message', async (req, res) => {
 // Get all registered users (from public.users and auth.users)
 adminRouter.get('/users/registered', async (req, res) => {
     try {
-        // Fetch from public.users. We can't directly join with auth.users easily via client SDK
-        // in a single query for all users without more complex SQL or a view.
-        // So, we'll fetch our user profiles first.
         const { data: users, error: usersError } = await supabase
             .from('users')
             .select('id, auth_user_id, email, created_at, profile_data')
             .order('created_at', { ascending: false });
 
         if (usersError) throw usersError;
-
-        // For enrichment, you might fetch auth.users details separately if needed,
-        // but this could be slow for many users. A simpler approach for now:
-        // Or create a DB view/function that pre-joins this information.
-        // Supabase admin API (not directly used by client SDK for this usually) might list auth users.
-        // For now, we return what's in public.users and note that auth_user_id links them.
-
         res.json(users);
     } catch (error) {
         console.error('Error fetching registered users:', error);
         res.status(500).json({ error: 'Failed to fetch registered users', details: error.message });
+    }
+});
+
+// Get all user profiles with complete registration data
+adminRouter.get('/users/profiles', async (req, res) => {
+    try {
+        const { data: profiles, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select(`
+                id,
+                auth_user_id,
+                email,
+                first_name,
+                last_name,
+                family_roles,
+                children_count,
+                children_ages,
+                main_concerns,
+                main_concerns_other,
+                dietary_preferences,
+                dietary_preferences_other,
+                personalized_support,
+                registration_metadata,
+                created_at
+            `)
+            .order('created_at', { ascending: false });
+
+        if (profilesError) throw profilesError;
+
+        // Enrich with auth data
+        const enrichedProfiles = await Promise.all(
+            profiles.map(async (profile) => {
+                try {
+                    const { data: authUser } = await supabase.auth.admin.getUserById(profile.auth_user_id);
+                    return {
+                        ...profile,
+                        last_sign_in_at: authUser?.user?.last_sign_in_at,
+                        email_confirmed_at: authUser?.user?.email_confirmed_at
+                    };
+                } catch (authError) {
+                    return profile; // Return profile without auth data if error
+                }
+            })
+        );
+
+        res.json(enrichedProfiles);
+    } catch (error) {
+        console.error('Error fetching user profiles:', error);
+        res.status(500).json({ error: 'Failed to fetch user profiles', details: error.message });
+    }
+});
+
+// Delete a user completely (admin function)
+adminRouter.delete('/users/:userId', async (req, res) => {
+    const { userId } = req.params;
+    
+    try {
+        // Use the database function to delete user completely
+        const { data, error } = await supabase.rpc('delete_user_completely', {
+            target_user_id: userId
+        });
+        
+        if (error) throw error;
+        
+        res.json({ 
+            success: true, 
+            message: `User ${userId} and all associated data deleted successfully.` 
+        });
+        
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ 
+            error: 'Failed to delete user', 
+            details: error.message 
+        });
     }
 });
 
@@ -1346,6 +1453,26 @@ adminRouter.delete('/conversations/:conversationId', async (req, res) => {
 
 // Mount the admin authentication routes
 app.use('/api/admin/auth', adminAuthRoutes);
+
+// Get user conversations for the hamburger menu
+app.get('/api/chat/conversations/:userId', authUser, async (req, res) => {
+    const { userId } = req.params;
+    
+    try {
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('id, created_at, last_message_at, metadata')
+            .eq('user_id', userId)
+            .order('last_message_at', { ascending: false })
+            .limit(20);
+            
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching user conversations:', error);
+        res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
+    }
+});
 
 // Mount the chat routes (protected with user authentication)
 app.use('/api/chat', chatRoutes);

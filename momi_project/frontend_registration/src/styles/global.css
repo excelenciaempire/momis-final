@@ -571,3 +571,95 @@ a:hover {
 .landing-footer span {
   margin: 0 var(--spacing-1);
 }
+
+/* Terms Page Styles */
+.terms-page {
+  min-height: 100vh;
+  background-color: var(--white-soft);
+  padding: var(--spacing-4);
+}
+
+.terms-header {
+  text-align: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.terms-logo {
+  width: 80px;
+  height: auto;
+  margin-bottom: var(--spacing-4);
+}
+
+.terms-header h1 {
+  color: var(--purple-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.terms-subtitle {
+  color: var(--gray-dark);
+  font-size: var(--font-size-lg);
+  margin-bottom: 0;
+}
+
+.terms-content {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-8);
+  box-shadow: var(--shadow-lg);
+}
+
+.terms-section {
+  margin-bottom: var(--spacing-8);
+}
+
+.terms-section h2 {
+  color: var(--purple-primary);
+  border-bottom: 2px solid var(--purple-light);
+  padding-bottom: var(--spacing-2);
+  margin-bottom: var(--spacing-6);
+}
+
+.effective-date, .contact-info {
+  background-color: var(--purple-light);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-4);
+}
+
+.term-item {
+  margin-bottom: var(--spacing-6);
+}
+
+.term-item h3 {
+  color: var(--gray-dark);
+  margin-bottom: var(--spacing-3);
+}
+
+.term-item p {
+  line-height: 1.6;
+  margin-bottom: var(--spacing-3);
+}
+
+.term-item ul {
+  margin-left: var(--spacing-5);
+  margin-bottom: var(--spacing-3);
+}
+
+.term-item li {
+  margin-bottom: var(--spacing-2);
+  line-height: 1.6;
+}
+
+.contact-section {
+  background-color: var(--white-soft);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.terms-footer {
+  text-align: center;
+  margin-top: var(--spacing-6);
+}

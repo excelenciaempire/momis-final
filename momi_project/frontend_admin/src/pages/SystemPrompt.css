@@ -1,7 +1,41 @@
-/* Prompt Section */
-.prompt-section {
+/* Tabs */
+.tabs-container {
   background-color: white;
   border-radius: 8px;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tab {
+  flex: 1;
+  padding: 15px 20px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6c757d;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.tab.active {
+  background-color: white;
+  color: #913D9A;
+  border-bottom: 3px solid #913D9A;
+}
+
+/* Prompt Section */
+.prompt-section {
   padding: 20px;
 }
 

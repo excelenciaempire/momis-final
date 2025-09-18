@@ -8,6 +8,8 @@ const ManageDocuments = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [viewingDocument, setViewingDocument] = useState(null);
+  const [documentContent, setDocumentContent] = useState('');
 
   useEffect(() => {
     fetchDocuments();
@@ -52,6 +54,18 @@ const ManageDocuments = () => {
       alert('Upload failed: ' + (err.response?.data?.error || err.message));
     } finally {
       setUploading(false);
+    }
+  };
+
+  const viewDocument = async (doc) => {
+    try {
+      setViewingDocument(doc);
+      // Get document chunks to reconstruct content
+      const response = await apiClient.get(`/admin/rag/document/${doc.id}/content`);
+      setDocumentContent(response.data.content || 'Content not available');
+    } catch (err) {
+      // Fallback: show document info only
+      setDocumentContent(`Document: ${doc.file_name}\nType: ${doc.file_type}\nUploaded: ${new Date(doc.uploaded_at).toLocaleString()}\n\nContent preview not available.`);
     }
   };
 
@@ -121,6 +135,12 @@ const ManageDocuments = () => {
                   <td>{doc.chunk_count || 0}</td>
                   <td>
                     <button 
+                      className="btn-view"
+                      onClick={() => viewDocument(doc)}
+                    >
+                      View
+                    </button>
+                    <button 
                       className="btn-delete"
                       onClick={() => deleteDocument(doc.id)}
                     >
@@ -133,6 +153,29 @@ const ManageDocuments = () => {
           </table>
         )}
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewingDocument && (
+        <div className="modal-overlay" onClick={() => setViewingDocument(null)}>
+          <div className="modal-content document-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📄 {viewingDocument.file_name}</h2>
+              <button className="modal-close" onClick={() => setViewingDocument(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="document-info">
+                <p><strong>Type:</strong> {viewingDocument.file_type.toUpperCase()}</p>
+                <p><strong>Uploaded:</strong> {new Date(viewingDocument.uploaded_at).toLocaleString()}</p>
+                <p><strong>Chunks:</strong> {viewingDocument.chunk_count} processed</p>
+              </div>
+              <div className="document-content">
+                <h4>Content Preview:</h4>
+                <pre className="content-preview">{documentContent}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

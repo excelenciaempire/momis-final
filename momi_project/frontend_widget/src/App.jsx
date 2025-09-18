@@ -7,13 +7,13 @@ import './App.css';
 // Set the base URL for all Axios requests
 axios.defaults.baseURL = 'https://momis-project.replit.app'; // Your deployed backend URL
 
-function App({ mode = 'floating' }) {
+function App({ mode = 'floating', userId = null, userProfile = null }) {
     const [isOpen, setIsOpen] = useState(mode === 'fullpage');
     const [messages, setMessages] = useState([]);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState(null);
     const [conversationId, setConversationId] = useState(null);
-    const [guestUserId, setGuestUserId] = useState(null);
+    const [currentUser, setCurrentUser] = useState(userId);
     const [isInitializing, setIsInitializing] = useState(true);
 
     useEffect(() => {
@@ -157,6 +157,29 @@ function App({ mode = 'floating' }) {
                     onClose={toggleChat}
                     isWindowOpen={isOpen}
                     mode={mode}
+                    userId={currentUser}
+                    onNewConversation={() => {
+                        setMessages([]);
+                        setConversationId(null);
+                        // Reinitialize with welcome message
+                        axios.get('/api/chat/settings').then(response => {
+                            const openingMessage = {
+                                sender_type: 'momi',
+                                content: response.data.openingMessage,
+                                timestamp: new Date().toISOString()
+                            };
+                            setMessages([openingMessage]);
+                        });
+                    }}
+                    onLoadConversation={async (convId) => {
+                        try {
+                            const response = await axios.get(`/api/chat/history/${convId}`);
+                            setMessages(response.data);
+                            setConversationId(convId);
+                        } catch (err) {
+                            console.error('Error loading conversation:', err);
+                        }
+                    }}
                 />
             </div>
         </div>

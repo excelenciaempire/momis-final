@@ -17,7 +17,7 @@ const RegisteredUsers = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await apiClient.get('/admin/users/registered');
+      const response = await apiClient.get('/admin/users/profiles');
       setUsers(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch registered users.');
@@ -33,12 +33,14 @@ const RegisteredUsers = () => {
   );
 
   const deleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user and all their data?')) return;
+    const user = users.find(u => u.auth_user_id === userId);
+    if (!confirm(`Are you sure you want to permanently delete ${user?.email} and ALL their data?\n\nThis will delete:\n- User profile\n- All conversations\n- All messages\n- Auth account\n\nThis action cannot be undone.`)) return;
     
     try {
       await apiClient.delete(`/admin/users/${userId}`);
       setUsers(users.filter(u => u.auth_user_id !== userId));
       setSelectedUser(null);
+      alert('User deleted successfully.');
     } catch (err) {
       alert('Failed to delete user: ' + (err.response?.data?.error || err.message));
     }
@@ -78,8 +80,8 @@ const RegisteredUsers = () => {
                 filteredUsers.map((user) => (
                   <tr key={user.auth_user_id || user.id}>
                     <td>{user.email}</td>
-                    <td>{`${user.profile_data?.first_name || ''} ${user.profile_data?.last_name || ''}`.trim() || 'N/A'}</td>
-                    <td>{user.role || 'user'}</td>
+                    <td>{`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A'}</td>
+                    <td>User</td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td>
                       <button 
@@ -117,39 +119,49 @@ const RegisteredUsers = () => {
             </div>
             <div className="modal-body">
               <div className="profile-section">
-                <h3>Basic Information</h3>
+                <h3>👤 Basic Information</h3>
                 <p><strong>Email:</strong> {selectedUser.email}</p>
-                <p><strong>Name:</strong> {selectedUser.profile_data?.first_name} {selectedUser.profile_data?.last_name}</p>
-                <p><strong>Role:</strong> {selectedUser.role || 'user'}</p>
+                <p><strong>Name:</strong> {selectedUser.first_name} {selectedUser.last_name}</p>
                 <p><strong>Joined:</strong> {new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                {selectedUser.last_sign_in_at && (
+                  <p><strong>Last Login:</strong> {new Date(selectedUser.last_sign_in_at).toLocaleString()}</p>
+                )}
+                <p><strong>Personalized Support:</strong> {selectedUser.personalized_support ? 'Yes' : 'No'}</p>
               </div>
               
-              {selectedUser.profile_data && (
-                <>
-                  <div className="profile-section">
-                    <h3>Family Information</h3>
-                    <p><strong>Family Roles:</strong> {selectedUser.profile_data.family_roles?.join(', ') || 'N/A'}</p>
-                    <p><strong>Children Count:</strong> {selectedUser.profile_data.children_count || 0}</p>
-                    <p><strong>Children Ages:</strong> {selectedUser.profile_data.children_ages?.join(', ') || 'N/A'}</p>
-                  </div>
-                  
-                  <div className="profile-section">
-                    <h3>Wellness Goals</h3>
-                    <p><strong>Main Concerns:</strong> {selectedUser.profile_data.main_concerns?.join(', ') || 'N/A'}</p>
-                    {selectedUser.profile_data.main_concerns_other && (
-                      <p><strong>Other Concerns:</strong> {selectedUser.profile_data.main_concerns_other}</p>
-                    )}
-                  </div>
-                  
-                  <div className="profile-section">
-                    <h3>Dietary Preferences</h3>
-                    <p><strong>Preferences:</strong> {selectedUser.profile_data.dietary_preferences?.join(', ') || 'N/A'}</p>
-                    {selectedUser.profile_data.dietary_preferences_other && (
-                      <p><strong>Other Preferences:</strong> {selectedUser.profile_data.dietary_preferences_other}</p>
-                    )}
-                  </div>
-                </>
-              )}
+              <div className="profile-section">
+                <h3>👨‍👩‍👧‍👦 Family Information</h3>
+                <p><strong>Family Roles:</strong> {selectedUser.family_roles?.length > 0 ? selectedUser.family_roles.join(', ') : 'Not specified'}</p>
+                <p><strong>Children Count:</strong> {selectedUser.children_count || 0}</p>
+                <p><strong>Children Ages:</strong> {selectedUser.children_ages?.length > 0 ? selectedUser.children_ages.join(', ') : 'Not specified'}</p>
+              </div>
+              
+              <div className="profile-section">
+                <h3>🎯 Wellness Goals</h3>
+                <p><strong>Main Concerns:</strong> {selectedUser.main_concerns?.length > 0 ? selectedUser.main_concerns.join(', ') : 'Not specified'}</p>
+                {selectedUser.main_concerns_other && (
+                  <p><strong>Other Concerns:</strong> {selectedUser.main_concerns_other}</p>
+                )}
+              </div>
+              
+              <div className="profile-section">
+                <h3>🍎 Dietary Preferences</h3>
+                <p><strong>Preferences:</strong> {selectedUser.dietary_preferences?.length > 0 ? selectedUser.dietary_preferences.join(', ') : 'Not specified'}</p>
+                {selectedUser.dietary_preferences_other && (
+                  <p><strong>Other Preferences:</strong> {selectedUser.dietary_preferences_other}</p>
+                )}
+              </div>
+
+              <div className="profile-section danger-zone">
+                <h3>⚠️ Danger Zone</h3>
+                <p>Permanently delete this user and all their data. This action cannot be undone.</p>
+                <button 
+                  className="btn-danger-delete"
+                  onClick={() => deleteUser(selectedUser.auth_user_id)}
+                >
+                  🗑️ Delete User Permanently
+                </button>
+              </div>
             </div>
           </div>
         </div>

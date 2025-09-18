@@ -33,6 +33,7 @@ function App() {
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setUserProfile(null)
+        setLoading(false)
       }
 
       setAuthChecked(true)

@@ -1,153 +1,170 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 
 const TermsPage = () => {
   return (
     <div className="terms-page">
       <div className="container">
         <div className="terms-header">
-          <h1>Terms and Conditions</h1>
-          <p className="terms-updated">Last updated: {new Date().toLocaleDateString()}</p>
+          <img
+            src="/momi-icon-2.png"
+            alt="MOMS on a Mission Logo"
+            className="terms-logo"
+          />
+          <h1>Terms of Service & Privacy Policy</h1>
+          <p className="terms-subtitle">MOMi AI Chatbot</p>
         </div>
 
         <div className="terms-content">
           <div className="terms-section">
-            <h2>1. Acceptance of Terms</h2>
-            <p>
-              By accessing and using MOMi (the "Service"), you accept and agree to be bound by the terms
-              and provision of this agreement. If you do not agree to abide by the above, please do not
-              use this service.
-            </p>
-          </div>
+            <h2>Terms of Service</h2>
+            <p className="effective-date"><strong>Effective Date:</strong> September 8, 2025</p>
+            <p className="contact-info"><strong>Contact Email:</strong> admin@7pillarsmission.com</p>
 
-          <div className="terms-section">
-            <h2>2. Description of Service</h2>
-            <p>
-              MOMi is an AI-powered wellness assistant designed to provide support and guidance based on
-              the 7 Pillars of Wellness. The Service is provided by MOMS on a Mission and is intended
-              to support your wellness journey through personalized recommendations and empathetic
-              conversation.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>1. Acceptance of Terms</h3>
+              <p>By accessing or using MOMi (the Moms on a Mission Intelligent Assistant), you agree to these Terms of Service. If you do not agree, please discontinue use of MOMi immediately.</p>
+            </div>
 
-          <div className="terms-section">
-            <h2>3. Medical Disclaimer</h2>
-            <div className="medical-disclaimer">
-              <p>
-                <strong>IMPORTANT:</strong> MOMi is not a medical professional and does not provide
-                medical advice, diagnosis, or treatment. The information provided by MOMi is for
-                educational and wellness support purposes only.
-              </p>
-              <p>
-                Always consult with qualified healthcare professionals before making any medical
-                decisions or if you have concerns about your health or your family's health.
-                Never disregard professional medical advice or delay seeking medical treatment
-                because of information provided by MOMi.
-              </p>
+            <div className="term-item">
+              <h3>2. Purpose of MOMi</h3>
+              <p>MOMi is an AI-powered health and wellness coach designed to provide general educational content, encouragement, and lifestyle support for moms and families. MOMi does not provide medical advice, diagnosis, or treatment. MOMi is not a substitute for professional medical care. Always consult with a licensed healthcare provider for medical concerns.</p>
+            </div>
+
+            <div className="term-item">
+              <h3>3. User Eligibility</h3>
+              <p>You must be at least 18 years old to use MOMi. By using MOMi, you represent that you are legally able to enter into these Terms.</p>
+            </div>
+
+            <div className="term-item">
+              <h3>4. Privacy and Data</h3>
+              <p>MOMi may collect information you provide during conversations to personalize your experience. We respect your privacy and do not sell personal information. For details, please see our Privacy Policy below.</p>
+              <ul>
+                <li>MOMi is not HIPAA-compliant and should not be used to store or transmit protected health information (PHI).</li>
+                <li>Do not share sensitive personal information such as social security numbers, financial data, or medical record numbers.</li>
+              </ul>
+            </div>
+
+            <div className="term-item">
+              <h3>5. Community Guidelines</h3>
+              <p>When using MOMi and participating in the MOMS on a Mission community:</p>
+              <ul>
+                <li>Engage with kindness, respect, and authenticity.</li>
+                <li>Do not use MOMi for unlawful, harmful, or abusive purposes.</li>
+                <li>Do not attempt to misuse, copy, or reverse-engineer the MOMi platform.</li>
+              </ul>
+            </div>
+
+            <div className="term-item">
+              <h3>6. Disclaimer of Warranties</h3>
+              <p>MOMi is provided "as is" and "as available." We do not guarantee uninterrupted access, accuracy, or reliability of responses. MOMi's information should be considered supportive guidance, not professional advice.</p>
+            </div>
+
+            <div className="term-item">
+              <h3>7. Limitation of Liability</h3>
+              <p>To the fullest extent permitted by law:</p>
+              <ul>
+                <li>MOMS on a Mission, its team members, and affiliates are not liable for any damages resulting from the use or inability to use MOMi.</li>
+                <li>You agree that any reliance on MOMi's content is at your own risk.</li>
+              </ul>
+            </div>
+
+            <div className="term-item">
+              <h3>8. Modifications</h3>
+              <p>We may update these Terms of Service at any time. Updated terms will be posted here with a revised effective date. Your continued use of MOMi after changes indicates acceptance.</p>
+            </div>
+
+            <div className="term-item">
+              <h3>9. Termination</h3>
+              <p>We reserve the right to suspend or terminate access to MOMi at our discretion, without notice, if you violate these Terms or misuse the service.</p>
+            </div>
+
+            <div className="term-item">
+              <h3>10. Governing Law</h3>
+              <p>These Terms are governed by the laws of the State of North Carolina, without regard to conflict of law principles.</p>
+            </div>
+
+            <div className="contact-section">
+              <h3>Questions?</h3>
+              <p>Please contact us at <a href="mailto:admin@7pillarsmission.com">admin@7pillarsmission.com</a>.</p>
             </div>
           </div>
 
           <div className="terms-section">
-            <h2>4. User Eligibility and Circle Membership</h2>
-            <p>
-              To use MOMi, you must be a current member of MOMS on a Mission Circle community.
-              Your registration email must match your Circle membership email. We reserve the
-              right to verify your membership status and revoke access if membership requirements
-              are not met.
-            </p>
-          </div>
+            <h2>Privacy Policy</h2>
+            <p className="effective-date"><strong>Effective Date:</strong> September 8, 2025</p>
+            <p className="contact-info"><strong>Contact Email:</strong> admin@7pillarsmission.com</p>
+            <p>MOMi (Moms on a Mission Intelligent Assistant) is committed to respecting your privacy and protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect your information when you use MOMi.</p>
 
-          <div className="terms-section">
-            <h2>5. Privacy and Data Protection</h2>
-            <p>
-              We take your privacy seriously. Your personal information, conversations with MOMi,
-              and profile data are protected and will not be shared with third parties except as
-              necessary to provide the Service or as required by law.
-            </p>
-            <p>
-              By using MOMi, you consent to the collection and use of your information as described
-              in our Privacy Policy. Your conversation history is stored to provide personalized
-              support and improve the Service.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>1. Purpose of Data Collection</h3>
+              <p>Your information is used to customize your MOMi experience and improve the platform. This includes tailoring content, recommendations, and resources based on your preferences and goals.</p>
+            </div>
 
-          <div className="terms-section">
-            <h2>6. Personalized Recommendations and Affiliate Content</h2>
-            <p>
-              If you opt-in to personalized support, MOMi may provide tailored recommendations
-              including affiliate offers when relevant. These recommendations are based on your
-              profile information and wellness goals. You can opt-out of personalized content
-              at any time.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>2. How Your Data Is Used</h3>
+              <p>Your information may be used:</p>
+              <ul>
+                <li>By MOMS on a Mission team members to improve MOMi's accuracy, outputs, and overall community experience.</li>
+                <li>By vetted, contracted employees to enhance technology, tools, and features.</li>
+                <li>For aggregated, anonymized insights that help us refine our offerings.</li>
+              </ul>
+              <p><strong>We never sell or share your personal information for marketing or profit outside of these purposes.</strong></p>
+            </div>
 
-          <div className="terms-section">
-            <h2>7. User Conduct</h2>
-            <p>You agree to use MOMi responsibly and agree not to:</p>
-            <ul>
-              <li>Use the Service for any unlawful purpose or in violation of these Terms</li>
-              <li>Attempt to gain unauthorized access to the Service or its systems</li>
-              <li>Share your account credentials with others</li>
-              <li>Use the Service to harass, abuse, or harm others</li>
-              <li>Submit false or misleading information</li>
-            </ul>
-          </div>
+            <div className="term-item">
+              <h3>3. Data Storage & Security</h3>
+              <ul>
+                <li>Information is stored on secure, encrypted servers.</li>
+                <li>Access is restricted to authorized personnel and contractors under confidentiality agreements.</li>
+                <li>We conduct annual security audits and additional reviews as needed to ensure compliance and protection.</li>
+              </ul>
+            </div>
 
-          <div className="terms-section">
-            <h2>8. Intellectual Property</h2>
-            <p>
-              The Service, including its content, features, and functionality, is owned by
-              MOMS on a Mission and is protected by copyright, trademark, and other intellectual
-              property laws. You may not reproduce, distribute, or create derivative works
-              without explicit permission.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>4. Retention Policy</h3>
+              <ul>
+                <li>Your data is retained while your account is active.</li>
+                <li>Data is deleted or anonymized within 6 months of account closure or prolonged inactivity.</li>
+                <li>Aggregated, anonymized data may be retained indefinitely to help improve MOMi.</li>
+              </ul>
+            </div>
 
-          <div className="terms-section">
-            <h2>9. Data Deletion and Account Termination</h2>
-            <p>
-              You have the right to request deletion of your personal data at any time.
-              To request data deletion or account termination, please contact our administrators.
-              Upon termination, your access to the Service will be immediately revoked.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>5. Your Rights</h3>
+              <p>You have the right to:</p>
+              <ul>
+                <li>Request a copy of your data by emailing admin@7pillarsmission.com.</li>
+                <li>Request deletion of your data at any time by emailing admin@7pillarsmission.com.</li>
+              </ul>
+            </div>
 
-          <div className="terms-section">
-            <h2>10. Limitation of Liability</h2>
-            <p>
-              To the maximum extent permitted by law, MOMS on a Mission and its affiliates
-              shall not be liable for any indirect, incidental, special, consequential, or
-              punitive damages, including but not limited to loss of profits, data, or other
-              intangible losses resulting from your use of the Service.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>6. Voluntary Participation</h3>
+              <p>Participation in MOMi is voluntary. You may withdraw at any time without penalty. If you choose to withdraw, your personal data will be deleted or anonymized in accordance with our retention policy.</p>
+            </div>
 
-          <div className="terms-section">
-            <h2>11. Changes to Terms</h2>
-            <p>
-              We reserve the right to modify these Terms at any time. We will notify users
-              of any material changes through the Service or via email. Your continued use
-              of the Service after changes are posted constitutes acceptance of the new Terms.
-            </p>
-          </div>
+            <div className="term-item">
+              <h3>7. Limitations of AI Guidance</h3>
+              <p>MOMi provides educational and coaching support only. MOMi is not a medical provider and does not offer medical advice, diagnosis, or treatment. Always consult a licensed healthcare professional for any medical concerns.</p>
+            </div>
 
-          <div className="terms-section">
-            <h2>12. Contact Information</h2>
-            <p>
-              If you have any questions about these Terms and Conditions, please contact us at:
-            </p>
-            <div className="contact-info">
-              <p>MOMS on a Mission<br />
-              Website: <a href="https://7pillarsmission.com" target="_blank" rel="noopener noreferrer">
-                7pillarsmission.com
-              </a></p>
+            <div className="term-item">
+              <h3>8. Consent</h3>
+              <p>By using MOMi, you acknowledge and consent to the collection and use of your data as described in this Privacy Policy.</p>
+            </div>
+
+            <div className="contact-section">
+              <h3>Questions?</h3>
+              <p>For privacy-related questions, please contact: <a href="mailto:admin@7pillarsmission.com">admin@7pillarsmission.com</a></p>
             </div>
           </div>
         </div>
 
         <div className="terms-footer">
-          <a href="/" className="btn btn-outline">
-            Back to Home
-          </a>
+          <Link to="/" className="btn btn-primary">
+            Back to MOMi
+          </Link>
         </div>
       </div>
     </div>
