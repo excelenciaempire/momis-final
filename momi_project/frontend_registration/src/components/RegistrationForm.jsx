@@ -493,16 +493,12 @@ const RegistrationForm = ({ onSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn btn-primary btn-large btn-full"
+            className={`btn btn-primary btn-large btn-full ${isLoading ? 'loading' : ''}`}
           >
-            {isLoading ? (
-              <>
-                <span className="loading-spinner"></span>
-                Creating Account...
-              </>
-            ) : (
-              'Create My MOMi Account'
-            )}
+            <span className="btn-content">
+              {isLoading && <span className="loading-spinner"></span>}
+              {isLoading ? 'Creating Account...' : 'Create My MOMi Account'}
+            </span>
           </button>
         </div>
       </form>
