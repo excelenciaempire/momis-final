@@ -23,7 +23,8 @@ const LandingPage = () => {
       toast.error(error.message);
     } else {
       toast.success('Logged in successfully!');
-      navigate('/chat');
+      // Force redirect to our chat page
+      window.location.href = '/chat';
     }
     setLoading(false);
   };

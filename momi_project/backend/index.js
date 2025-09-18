@@ -127,6 +127,9 @@ app.get('/chat', (req, res) => {
 app.get('/terms', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
+app.get('/email-confirmation', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 // Initialize Supabase client
 // It's recommended to use the SERVICE_ROLE_KEY for backend operations 
