@@ -68,8 +68,19 @@ function App() {
       setUserProfile(profile)
     } catch (error) {
       console.error('Error loading user data:', error)
-      // If profile loading fails, sign out the user
-      await supabase.auth.signOut()
+      // If profile loading fails, create a basic profile and continue
+      setUser(authUser)
+      setUserProfile({
+        auth_user_id: authUser.id,
+        email: authUser.email,
+        first_name: authUser.user_metadata?.first_name || 'User',
+        last_name: authUser.user_metadata?.last_name || '',
+        family_roles: [],
+        children_count: 0,
+        main_concerns: [],
+        dietary_preferences: [],
+        personalized_support: false
+      })
     }
   }
 
