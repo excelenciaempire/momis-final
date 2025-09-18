@@ -64,7 +64,7 @@ const LandingPage = () => {
                 required
               />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%' }}>
+            <button type="submit" disabled={loading} className="btn btn-primary btn-large" style={{ width: '100%' }}>
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
