@@ -10,7 +10,7 @@ const pdf = require('pdf-parse'); // For PDF text extraction
 const { authAdmin, requirePermission } = require('./middleware/authAdmin'); // Import admin auth middleware
 const authUser = require('./middleware/authUser'); // Import user auth middleware
 const adminAuthRoutes = require('./routes/adminAuth'); // Import admin auth routes
-// const chatRoutes = require('./routes/chat'); // Import chat routes - keep disabled for now
+const chatRoutes = require('./routes/chat'); // Import enhanced chat routes
 const axios = require('axios'); // Added for image URL to Data URI conversion
 const cors = require('cors'); // <-- ADD THIS LINE
 const conversationState = require('./utils/conversationState'); // Import conversation state manager
@@ -93,8 +93,8 @@ app.use(cors({
 
 // --- Middleware for serving static frontend files ---
 
-// Serve Landing Page (from momi_project/frontend_landing)
-app.use(express.static(path.join(__dirname, '../frontend_landing')));
+// Serve Registration Frontend (from momi_project/public)
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Serve Admin Panel (from momi_project/frontend_admin/dist)
 // All /admin/* routes should serve the admin panel's index.html for client-side routing
@@ -112,6 +112,21 @@ app.use('/widget', express.static(widgetDistPath));
 // app.get('/widget', (req, res) => {
 //     res.sendFile(path.join(widgetDistPath, 'index.html'));
 // });
+
+// Serve Registration Frontend SPA routes
+const publicPath = path.join(__dirname, '../public');
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+app.get('/chat', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+app.get('/terms', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 // Initialize Supabase client
 // It's recommended to use the SERVICE_ROLE_KEY for backend operations 
@@ -1301,13 +1316,13 @@ adminRouter.delete('/conversations/:conversationId', async (req, res) => {
 app.use('/api/admin/auth', adminAuthRoutes);
 
 // Mount the chat routes (protected with user authentication)
-// app.use('/api/chat', chatRoutes); // Keep disabled for now - using inline routes
+app.use('/api/chat', chatRoutes);
 
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
 // --- Image Upload Route (Protected) ---
-app.post('/api/chat/upload', /* authUser, */ imageUpload.single('image'), async (req, res) => {
+app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No image file provided.' });
     }
@@ -1475,19 +1490,26 @@ app.get('/api/chat/settings', async (req, res) => {
     }
 });
 
-// --- Chat Routes ---
+// --- Legacy Chat Route (Fallback for old widget instances) ---
 app.post('/api/chat/message', async (req, res) => {
-    const { conversationId, message, userId, guestUserId: initialGuestUserId, imageUrl } = req.body;
-    let currentConversationId = conversationId;
-    let currentGuestUserId = initialGuestUserId;
-    let newGuestCreated = false;
+    // This route is now handled by the new authenticated chat routes
+    // For backward compatibility, we'll return an error asking users to register
+    const { userId, guestUserId } = req.body;
 
-    if (!message && !imageUrl) {
-        return res.status(400).json({ error: 'Message or image URL is required.' });
+    if (!userId && guestUserId) {
+        return res.status(401).json({
+            error: 'Authentication required. Please register or log in to continue using MOMi.',
+            action: 'redirect_to_registration',
+            registrationUrl: 'https://momis-project.replit.app/register'
+        });
     }
-    if (!userId && !currentGuestUserId) {
-        return res.status(400).json({ error: 'User ID or Guest User ID is required.' });
-    }
+
+    // If they have a userId, this should have been caught by the new routes
+    return res.status(400).json({
+        error: 'Please use the new chat interface at /chat',
+        action: 'redirect_to_chat',
+        chatUrl: 'https://momis-project.replit.app/chat'
+    });
 
     try {
         // Validate or create guest user if guestUserId is provided

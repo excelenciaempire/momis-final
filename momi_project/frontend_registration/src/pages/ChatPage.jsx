@@ -26,7 +26,7 @@ const ChatPage = ({ user, userProfile }) => {
 
       // Load chat widget script dynamically
       const script = document.createElement('script')
-      script.src = '/widget/assets/widget-loader.js'
+      script.src = 'https://momis-project.replit.app/widget/assets/widget-loader.js'
       script.type = 'module'
       script.async = true
       script.crossOrigin = 'anonymous'
@@ -47,7 +47,7 @@ const ChatPage = ({ user, userProfile }) => {
       // Load CSS
       const link = document.createElement('link')
       link.rel = 'stylesheet'
-      link.href = '/widget/assets/widget-styles.css'
+      link.href = 'https://momis-project.replit.app/widget/assets/widget-styles.css'
       document.head.appendChild(link)
 
     } catch (error) {
