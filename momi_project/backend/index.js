@@ -1321,33 +1321,6 @@ app.use('/api/chat', chatRoutes);
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
-// TEMPORARY: Endpoint to set admin password, placed outside of protected routes
-const bcrypt = require('bcrypt');
-const hashPassword = async (password) => {
-    const saltRounds = 12;
-    return await bcrypt.hash(password, saltRounds);
-};
-app.post('/api/set-admin-password', async (req, res) => {
-    const { email, password, secretKey } = req.body;
-    if (secretKey !== process.env.ADMIN_INIT_KEY) {
-        return res.status(403).json({ error: 'Invalid secret key.' });
-    }
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required.' });
-    }
-    try {
-        const passwordHash = await hashPassword(password);
-        const { error } = await supabase
-            .from('admin_users')
-            .update({ password_hash: passwordHash })
-            .eq('email', email.toLowerCase());
-        if (error) throw error;
-        res.json({ success: true, message: `Password for ${email} has been updated.` });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update password.', details: error.message });
-    }
-});
-
 // --- Image Upload Route (Protected) ---
 app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, res) => {
     if (!req.file) {
