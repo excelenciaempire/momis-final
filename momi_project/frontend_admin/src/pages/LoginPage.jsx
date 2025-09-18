@@ -23,6 +23,7 @@ const LoginPage = ({ onLogin }) => { // Accept onLogin prop to update session st
       // Store the token in localStorage
       localStorage.setItem('admin-session-token', sessionToken);
       localStorage.setItem('admin-user', JSON.stringify(admin));
+      console.log('Admin session token saved:', sessionToken); // DEBUG: Verify token is saved
 
       // Notify parent component about the successful login
       onLogin(admin);
