@@ -22,11 +22,20 @@ const LoginPage = ({ onLoginSuccess }) => {
     setIsLoading(true)
 
     try {
-      // Sign in with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Sign in with Supabase Auth with timeout
+      const authPromise = supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
       })
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Login timeout')), 15000)
+      )
+
+      const { data: authData, error: authError } = await Promise.race([
+        authPromise,
+        timeoutPromise
+      ])
 
       if (authError) {
         console.error('Login error:', authError)
@@ -37,28 +46,44 @@ const LoginPage = ({ onLoginSuccess }) => {
         } else {
           toast.error(authError.message || 'Failed to log in')
         }
-        setIsLoading(false)
         return
       }
 
-      if (!authData.user) {
+      if (!authData?.user) {
         toast.error('Login failed. Please try again.')
-        setIsLoading(false)
         return
       }
 
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
+      // Get user profile with timeout
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('auth_user_id', authData.user.id)
         .single()
 
+      const profileTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+      )
+
+      const { data: profile, error: profileError } = await Promise.race([
+        profilePromise,
+        profileTimeoutPromise
+      ])
+
       if (profileError || !profile) {
         console.error('Profile fetch error:', profileError)
+        
+        // Try to continue with basic auth data if profile fetch fails
+        if (authData.user) {
+          toast.success('Welcome back! Loading your profile...')
+          if (onLoginSuccess) {
+            onLoginSuccess(authData.user, null)
+          }
+          return
+        }
+        
         toast.error('Unable to load user profile. Please try again.')
         await supabase.auth.signOut()
-        setIsLoading(false)
         return
       }
 
@@ -71,10 +96,14 @@ const LoginPage = ({ onLoginSuccess }) => {
 
     } catch (error) {
       console.error('Unexpected login error:', error)
-      toast.error('An unexpected error occurred. Please try again.')
+      if (error.message === 'Login timeout' || error.message === 'Profile fetch timeout') {
+        toast.error('Login is taking longer than expected. Please check your connection and try again.')
+      } else {
+        toast.error('An unexpected error occurred. Please try again.')
+      }
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const handleForgotPassword = async () => {

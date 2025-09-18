@@ -424,18 +424,68 @@ router.get('/conversations', authUser, async (req, res) => {
     const user = req.user;
 
     try {
+        // Get conversations with message counts and last message timestamp
         const { data: conversations, error } = await supabase
             .from('conversations')
             .select(`
                 id,
                 created_at,
-                messages(count)
+                summary
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        res.json(conversations);
+
+        // Enhance conversations with message data
+        const enhancedConversations = await Promise.all(
+            conversations.map(async (conv) => {
+                // Get message count and last message for each conversation
+                const { data: messages, error: msgError } = await supabase
+                    .from('messages')
+                    .select('content, timestamp, sender_type')
+                    .eq('conversation_id', conv.id)
+                    .order('timestamp', { ascending: false })
+                    .limit(1);
+
+                if (msgError) {
+                    console.error('Error fetching messages for conversation:', msgError);
+                    return {
+                        ...conv,
+                        message_count: 0,
+                        last_message_at: conv.created_at,
+                        last_message: null
+                    };
+                }
+
+                // Get total message count
+                const { count, error: countError } = await supabase
+                    .from('messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('conversation_id', conv.id);
+
+                const lastMessage = messages && messages.length > 0 ? messages[0] : null;
+                const lastMessagePreview = lastMessage 
+                    ? (lastMessage.sender_type === 'user' 
+                        ? lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : '')
+                        : lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : ''))
+                    : null;
+
+                return {
+                    ...conv,
+                    message_count: count || 0,
+                    last_message_at: lastMessage ? lastMessage.timestamp : conv.created_at,
+                    last_message: lastMessagePreview
+                };
+            })
+        );
+
+        // Sort by last message timestamp
+        enhancedConversations.sort((a, b) => 
+            new Date(b.last_message_at) - new Date(a.last_message_at)
+        );
+
+        res.json(enhancedConversations);
     } catch (error) {
         console.error('Error fetching conversations:', error);
         res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });

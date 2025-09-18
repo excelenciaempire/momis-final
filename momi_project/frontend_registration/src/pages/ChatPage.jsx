@@ -11,6 +11,7 @@ const ChatPage = ({ user, userProfile }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -20,6 +21,26 @@ const ChatPage = ({ user, userProfile }) => {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true)
+      toast.success('Connection restored')
+    }
+    
+    const handleOffline = () => {
+      setIsOnline(false)
+      toast.error('Connection lost. Some features may not work.')
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -47,12 +68,27 @@ const ChatPage = ({ user, userProfile }) => {
     try {
       setLoadingConversations(true)
       const token = (await supabase.auth.getSession()).data.session?.access_token
-      const response = await axios.get(`/api/chat/conversations/${user.id}`, {
+      
+      if (!token) {
+        console.error('No authentication token available')
+        return
+      }
+
+      const response = await axios.get('/api/chat/conversations', {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setConversations(response.data)
+      
+      // Sort conversations by most recent first
+      const sortedConversations = response.data.sort((a, b) => 
+        new Date(b.last_message_at || b.created_at) - new Date(a.last_message_at || a.created_at)
+      )
+      
+      setConversations(sortedConversations)
     } catch (error) {
       console.error('Error fetching conversations:', error)
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.')
+      }
     } finally {
       setLoadingConversations(false)
     }
@@ -60,6 +96,11 @@ const ChatPage = ({ user, userProfile }) => {
 
   const sendMessage = async () => {
     if (!inputText.trim() || isSending) return
+    
+    if (!isOnline) {
+      toast.error('No internet connection. Please check your network and try again.')
+      return
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -75,18 +116,26 @@ const ChatPage = ({ user, userProfile }) => {
 
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token
+      
+      if (!token) {
+        throw new Error('No authentication token available')
+      }
+
       const response = await axios.post('/api/chat/message', {
         message: messageText,
-        userId: user.id,
         conversationId: conversationId
       }, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 second timeout
       })
 
       const momiMessage = {
         id: Date.now() + 1,
         sender_type: 'momi',
-        content: response.data.reply,
+        content: response.data.reply || 'I apologize, but I encountered an issue processing your message. Please try again.',
         timestamp: new Date().toISOString()
       }
 
@@ -97,7 +146,24 @@ const ChatPage = ({ user, userProfile }) => {
 
     } catch (error) {
       console.error('Error sending message:', error)
-      toast.error('Failed to send message. Please try again.')
+      
+      // Add error message to chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        sender_type: 'momi',
+        content: 'I apologize, but I\'m having trouble responding right now. Please check your connection and try again.',
+        timestamp: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
+      
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 2000)
+      } else {
+        toast.error('Failed to send message. Please try again.')
+      }
     } finally {
       setIsSending(false)
     }
@@ -112,16 +178,42 @@ const ChatPage = ({ user, userProfile }) => {
 
   const loadConversation = async (convId) => {
     try {
+      setLoadingConversations(true)
       const token = (await supabase.auth.getSession()).data.session?.access_token
+      
+      if (!token) {
+        toast.error('Session expired. Please log in again.')
+        return
+      }
+
       const response = await axios.get(`/api/chat/history/${convId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       })
-      setMessages(response.data)
+      
+      // Transform backend message format to frontend format
+      const transformedMessages = response.data.map(msg => ({
+        id: msg.id,
+        sender_type: msg.sender_type,
+        content: msg.content,
+        timestamp: msg.timestamp
+      }))
+      
+      setMessages(transformedMessages)
       setConversationId(convId)
       setIsMenuOpen(false)
+      toast.success('Conversation loaded successfully')
     } catch (error) {
       console.error('Error loading conversation:', error)
-      toast.error('Failed to load conversation')
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.')
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Loading conversation timed out. Please try again.')
+      } else {
+        toast.error('Failed to load conversation. Please try again.')
+      }
+    } finally {
+      setLoadingConversations(false)
     }
   }
 
@@ -249,8 +341,9 @@ const ChatPage = ({ user, userProfile }) => {
             />
             <button
               onClick={sendMessage}
-              disabled={!inputText.trim() || isSending}
-              className="send-btn-fullwidth"
+              disabled={!inputText.trim() || isSending || !isOnline}
+              className={`send-btn-fullwidth ${!isOnline ? 'offline' : ''}`}
+              title={!isOnline ? 'No internet connection' : 'Send message'}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -291,14 +384,21 @@ const ChatPage = ({ user, userProfile }) => {
                 >
                   <div className="conv-preview">
                     <span className="conv-date">
-                      {new Date(conv.created_at).toLocaleDateString()}
+                      {new Date(conv.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: new Date(conv.created_at).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                      })}
                     </span>
                     <span className="conv-time">
                       {new Date(conv.last_message_at || conv.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </span>
                   </div>
                   <div className="conv-snippet">
-                    Chat from {new Date(conv.created_at).toLocaleDateString()}
+                    {conv.summary || conv.last_message || `Conversation started ${new Date(conv.created_at).toLocaleDateString()}`}
+                  </div>
+                  <div className="conv-message-count">
+                    {conv.message_count || 0} messages
                   </div>
                 </div>
               ))}
