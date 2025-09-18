@@ -42,7 +42,7 @@ function App() {
   }
 
   return (
-    <Router>
+    <Router basename="/admin">
       <div className="app-container">
         {session && <Sidebar user={session} onLogout={handleLogout} />}
         <main className="main-content">
