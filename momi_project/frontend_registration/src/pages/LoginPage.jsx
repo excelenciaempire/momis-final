@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../utils/supabaseClient'
 
 const LoginPage = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
 
   const {
     register,
@@ -80,6 +82,7 @@ const LoginPage = ({ onLoginSuccess }) => {
             onLoginSuccess(authData.user, null)
           }
           // Force immediate redirect even without profile
+          navigate('/chat', { replace: true })
           return
         }
         
@@ -94,8 +97,9 @@ const LoginPage = ({ onLoginSuccess }) => {
       if (onLoginSuccess) {
         onLoginSuccess(authData.user, profile)
       }
-      
+
       // Force immediate redirect to chat
+      navigate('/chat', { replace: true })
 
     } catch (error) {
       console.error('Unexpected login error:', error)

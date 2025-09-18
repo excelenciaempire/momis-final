@@ -30,12 +30,12 @@ function App() {
       console.log('Auth state changed:', event, session?.user?.email)
 
       if (event === 'SIGNED_IN' && session?.user) {
-        // Set user immediately and load profile in background
+        // Set user immediately for instant redirect
         setUser(session.user)
         setLoading(false)
         setAuthChecked(true)
-        
-        // Load profile asynchronously
+
+        // Load profile asynchronously in background (don't wait for it)
         loadUserProfile(session.user)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -110,6 +110,7 @@ function App() {
       dietary_preferences: [],
       personalized_support: false
     })
+    // Immediately stop loading and mark auth as checked
     setLoading(false)
     setAuthChecked(true)
   }

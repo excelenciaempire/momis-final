@@ -14,6 +14,7 @@ function App({ mode = 'floating', userId = null, userProfile = null }) {
     const [error, setError] = useState(null);
     const [conversationId, setConversationId] = useState(null);
     const [currentUser, setCurrentUser] = useState(userId);
+    const [guestUserId, setGuestUserId] = useState(null);
     const [isInitializing, setIsInitializing] = useState(true);
 
     useEffect(() => {
