@@ -1092,3 +1092,129 @@ a:hover {
   padding: var(--spacing-8) var(--spacing-4);
   font-style: italic;
 }
+
+/* Email Confirmation Page */
+.email-confirmation-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--white-soft) 0%, var(--purple-light) 100%);
+  padding: var(--spacing-4);
+}
+
+.confirmation-container {
+  width: 100%;
+  max-width: 500px;
+}
+
+.confirmation-card {
+  background-color: white;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-8);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--purple-light);
+  text-align: center;
+}
+
+.confirmation-logo {
+  width: 80px;
+  height: auto;
+  margin: 0 auto var(--spacing-4) auto;
+  display: block;
+}
+
+.success-icon {
+  margin: var(--spacing-4) auto var(--spacing-6) auto;
+  width: 64px;
+  height: 64px;
+}
+
+.confirmation-title {
+  color: var(--purple-primary);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-3);
+}
+
+.confirmation-subtitle {
+  color: var(--gray-dark);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-8);
+  line-height: 1.5;
+}
+
+.confirmation-steps {
+  text-align: left;
+  margin-bottom: var(--spacing-8);
+}
+
+.step {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+  align-items: flex-start;
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple-primary) 0%, var(--magenta-vibrant) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step-content h3 {
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--gray-dark);
+  font-size: var(--font-size-base);
+}
+
+.step-content p {
+  margin: 0;
+  color: var(--gray-dark);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: var(--spacing-4);
+  justify-content: center;
+  margin-bottom: var(--spacing-8);
+}
+
+.help-section {
+  background-color: var(--white-soft);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.help-section h4 {
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--purple-primary);
+  font-size: var(--font-size-base);
+}
+
+.help-section ul {
+  margin: 0;
+  padding-left: var(--spacing-5);
+}
+
+.help-section li {
+  margin-bottom: var(--spacing-2);
+  color: var(--gray-dark);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.help-section a {
+  color: var(--purple-primary);
+  font-weight: 500;
+}

@@ -181,26 +181,40 @@ const RegistrationForm = ({ onSuccess }) => {
         }
       }
 
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([profileData])
+      // The user profile will be created automatically by the database trigger
+      // We just need to update it with the registration data after a short delay
+      setTimeout(async () => {
+        try {
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({
+              family_roles: data.familyRoles,
+              children_count: parseInt(data.childrenCount),
+              children_ages: data.childrenAges,
+              main_concerns: data.mainConcerns.filter(c => c !== 'other'),
+              main_concerns_other: data.mainConcernsOther || null,
+              dietary_preferences: data.dietaryPreferences.filter(d => d !== 'other'),
+              dietary_preferences_other: data.dietaryPreferencesOther || null,
+              personalized_support: data.personalizedSupport,
+              registration_metadata: {
+                registration_date: new Date().toISOString(),
+                registration_source: 'web_form',
+                form_version: '1.0',
+                raw_form_data: data
+              }
+            })
+            .eq('auth_user_id', authData.user.id)
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError)
-        // If profile creation fails, we should clean up the auth user
-        await supabase.auth.signOut()
-        toast.error('Failed to create user profile. Please try again.')
-        setIsLoading(false)
-        return
-      }
+          if (updateError) {
+            console.error('Profile update error:', updateError)
+          }
+        } catch (updateErr) {
+          console.error('Profile update failed:', updateErr)
+        }
+      }, 2000) // Wait 2 seconds for trigger to create basic profile
 
-      toast.success('Account created successfully! Please check your email for verification.')
-
-      // Call success callback
-      if (onSuccess) {
-        onSuccess(authData.user, profileData)
-      }
+      // Redirect to email confirmation page
+      window.location.href = '/email-confirmation'
 
     } catch (error) {
       console.error('Registration error:', error)
