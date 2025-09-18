@@ -214,6 +214,38 @@ router.get('/verify', async (req, res) => {
     }
 });
 
+// TEMPORARY: Endpoint to set admin password
+router.post('/set-password', async (req, res) => {
+    const { email, password, secretKey } = req.body;
+
+    // A simple secret key to protect this endpoint
+    if (secretKey !== process.env.ADMIN_INIT_KEY) {
+        return res.status(403).json({ error: 'Invalid secret key.' });
+    }
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    try {
+        const passwordHash = await hashPassword(password);
+        const { data, error } = await supabase
+            .from('admin_users')
+            .update({ password_hash: passwordHash })
+            .eq('email', email.toLowerCase());
+        
+        if (error) {
+            return res.status(500).json({ error: 'Failed to update password.', details: error.message });
+        }
+
+        res.json({ success: true, message: `Password for ${email} has been updated.` });
+
+    } catch (error) {
+        res.status(500).json({ error: 'Internal server error.', details: error.message });
+    }
+});
+
+
 // Change password route (requires current session)
 router.post('/change-password', async (req, res) => {
     const { currentPassword, newPassword } = req.body;
