@@ -55,22 +55,28 @@ function App() {
 
   return (
     <Router basename="/admin">
-      <div className="app-container">
-        {session && <Sidebar user={session} onLogout={handleLogout} />}
-        <main className="main-content">
+      <div className="admin-app-container">
+        {session ? (
+          <div className="admin-layout">
+            <Sidebar user={session} onLogout={handleLogout} />
+            <main className="admin-main-content">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/users" element={<RegisteredUsers />} />
+                <Route path="/conversations" element={<Conversations />} />
+                <Route path="/documents" element={<ManageDocuments />} />
+                <Route path="/kb-settings" element={<KBSettings />} />
+                <Route path="/system-prompt" element={<SystemPrompt />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </main>
+          </div>
+        ) : (
           <Routes>
-            <Route path="/login" element={!session ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
-            
-            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/users" element={<PrivateRoute><RegisteredUsers /></PrivateRoute>} />
-            <Route path="/conversations" element={<PrivateRoute><Conversations /></PrivateRoute>} />
-            <Route path="/documents" element={<PrivateRoute><ManageDocuments /></PrivateRoute>} />
-            <Route path="/kb-settings" element={<PrivateRoute><KBSettings /></PrivateRoute>} />
-            <Route path="/system-prompt" element={<PrivateRoute><SystemPrompt /></PrivateRoute>} />
-
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+            <Route path="*" element={<Navigate to="/login" />} />
           </Routes>
-        </main>
+        )}
       </div>
     </Router>
   );

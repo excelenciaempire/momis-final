@@ -33,12 +33,12 @@ const LandingPage = () => {
       <div className="auth-container">
         <div className="auth-card">
           <img
-            src="/momi-icon-2.png" // Make sure this path is correct in your public folder
-            alt="MOMi Logo"
+            src="/momi-icon-2.png"
+            alt="MOMS on a Mission Logo"
             className="auth-logo"
           />
-          <h1 className="auth-title">Welcome to MOMi</h1>
-          <p className="auth-subtitle">Your AI-Powered Wellness Assistant</p>
+          <h1 className="auth-title">Welcome Back to MOMi</h1>
+          <p className="auth-subtitle">Your AI-powered wellness assistant is ready to continue supporting your journey.</p>
 
           <form onSubmit={handleLogin} className="auth-form">
             <div className="form-group">

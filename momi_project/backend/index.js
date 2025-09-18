@@ -378,6 +378,38 @@ async function determineUserStatus(userId) {
 const adminRouter = express.Router();
 adminRouter.use(authAdmin); // Apply admin auth middleware to all routes in adminRouter
 
+// Get all documents in knowledge base
+adminRouter.get('/rag/documents', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('knowledge_base_documents')
+            .select('id, file_name, file_type, uploaded_at, last_indexed_at')
+            .order('uploaded_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Get chunk count for each document
+        const documentsWithChunks = await Promise.all(
+            data.map(async (doc) => {
+                const { count } = await supabase
+                    .from('document_chunks')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('document_id', doc.id);
+                
+                return {
+                    ...doc,
+                    chunk_count: count || 0
+                };
+            })
+        );
+        
+        res.json(documentsWithChunks);
+    } catch (error) {
+        console.error('Error fetching documents:', error);
+        res.status(500).json({ error: 'Failed to fetch documents', details: error.message });
+    }
+});
+
 adminRouter.post('/rag/upload-document', ragDocumentUpload.single('document'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No document file provided.' });
     // Service key check is implicitly handled by middleware or Supabase client config for admin operations
@@ -1317,6 +1349,18 @@ app.use('/api/admin/auth', adminAuthRoutes);
 
 // Mount the chat routes (protected with user authentication)
 app.use('/api/chat', chatRoutes);
+
+// Dashboard stats endpoint using the database function
+adminRouter.post('/dashboard/stats', async (req, res) => {
+    try {
+        const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard stats', details: error.message });
+    }
+});
 
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes

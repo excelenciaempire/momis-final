@@ -1,0 +1,134 @@
+/* Conversations Container */
+.conversations-container {
+  display: flex;
+  gap: 20px;
+  height: 70vh;
+}
+
+.conversations-list {
+  flex: 1;
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.conversations-list h3 {
+  margin: 0 0 15px 0;
+  color: #343a40;
+}
+
+.conversation-item {
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.conversation-item:hover {
+  background-color: #f8f9fa;
+}
+
+.conversation-item.selected {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.conv-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.conv-user {
+  font-weight: 600;
+  color: #343a40;
+}
+
+.conv-date {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.conv-preview {
+  color: #6c757d;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Messages Panel */
+.messages-panel {
+  flex: 2;
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.messages-header h3 {
+  margin: 0;
+  color: #343a40;
+}
+
+.messages-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.message {
+  margin-bottom: 15px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.message.user {
+  background-color: #e3f2fd;
+  margin-left: 20px;
+}
+
+.message.momi {
+  background-color: #f3e5f5;
+  margin-right: 20px;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sender {
+  font-weight: 600;
+  color: #343a40;
+}
+
+.timestamp {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.message-content {
+  color: #343a40;
+  line-height: 1.4;
+}
+
+.no-data {
+  text-align: center;
+  color: #6c757d;
+  padding: 40px 20px;
+}
