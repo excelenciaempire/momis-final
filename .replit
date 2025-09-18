@@ -25,12 +25,7 @@ externalPort = 80
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 11571
-externalPort = 3001
-exposeLocalhost = true
+externalPort = 80
 
 [[ports]]
 localPort = 16631
@@ -58,7 +53,7 @@ task = "shell.exec"
 args = "cd momi_project/backend && npm install && npm run build && node index.js"
 
 [workflows]
-runButton = "Build and Run"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "test"
@@ -77,6 +72,27 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd momi_project && npm install && npm run dev"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend Admin"
+
+[[workflows.workflow]]
+name = "Frontend Admin"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd momi_project/frontend_admin && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 expertMode = true

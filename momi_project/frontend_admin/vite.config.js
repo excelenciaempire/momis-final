@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   base: '/admin/', // Crucial for deploying to a sub-path
   server: {
+    host: '0.0.0.0',
+    port: 5000,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001', // Your backend server address

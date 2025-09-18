@@ -8,7 +8,7 @@ import ManageDocuments from './pages/ManageDocuments';
 import KBSettings from './pages/KBSettings';
 import SystemPrompt from './pages/SystemPrompt';
 import LoginPage from './pages/LoginPage';
-import { supabase } from '../supabaseClient'; // Import supabase client
+import { supabase } from './supabaseClient'; // Import supabase client
 import './App.css';
 
 function App() {
