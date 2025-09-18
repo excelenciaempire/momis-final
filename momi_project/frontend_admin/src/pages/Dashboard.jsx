@@ -22,7 +22,7 @@ const Dashboard = () => {
       try {
         setError('');
         setLoading(true);
-        const response = await apiClient.get('/admin/dashboard/stats');
+        const response = await apiClient.get('/admin/analytics/summary');
         setStats(response.data);
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to fetch dashboard data.');
@@ -43,14 +43,10 @@ const Dashboard = () => {
 
       {stats && !loading && (
         <div className="stats-grid">
-          <StatCard title="Total Users" value={stats.total_users} icon="👥" />
-          <StatCard title="Total Conversations" value={stats.total_conversations} icon="💬" />
-          <StatCard title="Total Messages" value={stats.total_messages} icon="✉️" />
-          <StatCard title="Messages Today" value={stats.messages_today} icon="📅" />
-          <StatCard title="New Users (Week)" value={stats.new_users_this_week} icon="📈" />
-          <StatCard title="Active Users (Week)" value={stats.active_users_this_week} icon="🔥" />
-          <StatCard title="KB Documents" value={stats.knowledge_base_documents} icon="📚" />
-          <StatCard title="KB Chunks" value={stats.knowledge_base_chunks} icon="📄" />
+          <StatCard title="Registered Users" value={stats.totalRegisteredUsers} icon="👥" />
+          <StatCard title="Guest Users" value={stats.totalGuestUsers} icon="👤" />
+          <StatCard title="Total Conversations" value={stats.totalConversations} icon="💬" />
+          <StatCard title="Messages Today" value={stats.messagesToday} icon="📅" />
         </div>
       )}
     </div>
