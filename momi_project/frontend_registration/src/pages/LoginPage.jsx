@@ -80,7 +80,6 @@ const LoginPage = ({ onLoginSuccess }) => {
             onLoginSuccess(authData.user, null)
           }
           // Force immediate redirect even without profile
-          window.location.href = '/chat'
           return
         }
         
@@ -97,7 +96,6 @@ const LoginPage = ({ onLoginSuccess }) => {
       }
       
       // Force immediate redirect to chat
-      window.location.href = '/chat'
 
     } catch (error) {
       console.error('Unexpected login error:', error)
