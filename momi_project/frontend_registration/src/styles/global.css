@@ -663,3 +663,115 @@ a:hover {
   text-align: center;
   margin-top: var(--spacing-6);
 }
+
+/* Chat Page Styles */
+.chat-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--white-soft);
+}
+
+.chat-header {
+  background: linear-gradient(135deg, var(--purple-primary) 0%, var(--magenta-vibrant) 100%);
+  color: white;
+  padding: var(--spacing-4) var(--spacing-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-md);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.momi-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 3px solid white;
+}
+
+.user-details h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: white;
+}
+
+.user-details p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.btn-small {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
+.chat-container {
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 140px); /* Account for header and footer */
+  position: relative;
+}
+
+.fullpage-chat {
+  background-color: white;
+}
+
+.chat-footer {
+  background-color: var(--gray-light);
+  padding: var(--spacing-2) var(--spacing-6);
+  text-align: center;
+  border-top: 1px solid var(--purple-light);
+}
+
+.disclaimer {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--gray-dark);
+}
+
+/* Chat Loading States */
+.chat-loading, .chat-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: var(--white-soft);
+}
+
+.loading-container, .error-container {
+  text-align: center;
+  max-width: 400px;
+  padding: var(--spacing-8);
+}
+
+.loading-logo {
+  width: 80px;
+  height: auto;
+  margin-bottom: var(--spacing-4);
+}
+
+.loading-spinner.large {
+  width: 40px;
+  height: 40px;
+  margin: var(--spacing-4) auto;
+}
+
+.error-actions {
+  display: flex;
+  gap: var(--spacing-4);
+  justify-content: center;
+  margin-top: var(--spacing-6);
+}

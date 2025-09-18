@@ -3,37 +3,38 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 
-// Ensure this ID matches the one the loader script in the landing page will create
-const WIDGET_CONTAINER_ID = 'momi-chat-widget-container'
-
-let container = document.getElementById(WIDGET_CONTAINER_ID)
-
-if (!container) {
-  // Fallback or for standalone dev: if the specific container isn't found, 
-  // try to use a generic 'root' or create the container dynamically.
-  // For production widget, the host page (landing page) MUST create this container.
-  console.warn(`MOMi Widget: Container with ID "${WIDGET_CONTAINER_ID}" not found. Attempting to create or use #root.`)
-  container = document.createElement('div')
-  container.id = WIDGET_CONTAINER_ID
-  document.body.appendChild(container)
-  // Or, fallback to 'root' if it exists and you want to support standalone dev easily
-  // container = document.getElementById('root')
-  // if (!container) { // if root also doesn't exist, then create the widget container
-  //    container = document.createElement('div')
-  //    container.id = WIDGET_CONTAINER_ID
-  //    document.body.appendChild(container)
-  // }
-}
-
 // Check for a configuration object on the window
 const config = window.momiChatWidget || {}
-const mode = config.mode || 'floating' // Default to 'floating'
+const mode = config.mode || 'floating'
+const containerId = config.containerId || 'momi-chat-widget-container'
+
+// Get the container specified in config or fallback to default
+let container = document.getElementById(containerId)
+
+if (!container) {
+  // For fullpage mode, try to find the chat container
+  if (mode === 'fullpage') {
+    container = document.getElementById('momi-chat-container')
+  }
+  
+  // If still no container, create default
+  if (!container) {
+    console.warn(`MOMi Widget: Container with ID "${containerId}" not found. Creating default container.`)
+    container = document.createElement('div')
+    container.id = containerId
+    document.body.appendChild(container)
+  }
+}
 
 // Check again if container exists before rendering
 if (container) {
     createRoot(container).render(
         <StrictMode>
-            <App mode={mode} />
+            <App 
+                mode={mode} 
+                userId={config.userId}
+                userProfile={config.userProfile}
+            />
         </StrictMode>,
     )
 } else {

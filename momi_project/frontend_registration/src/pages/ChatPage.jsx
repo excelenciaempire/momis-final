@@ -24,6 +24,20 @@ const ChatPage = ({ user, userProfile }) => {
         return
       }
 
+      // Configure widget for fullpage mode BEFORE loading
+      window.momiChatWidget = {
+        mode: 'fullpage',
+        userId: currentUser.id,
+        userProfile: userProfile,
+        containerId: 'momi-chat-container'
+      }
+
+      // Load CSS first
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = 'https://momis-project.replit.app/widget/assets/widget-styles.css'
+      document.head.appendChild(link)
+
       // Load chat widget script dynamically
       const script = document.createElement('script')
       script.src = 'https://momis-project.replit.app/widget/assets/widget-loader.js'
@@ -32,8 +46,7 @@ const ChatPage = ({ user, userProfile }) => {
       script.crossOrigin = 'anonymous'
 
       script.onload = () => {
-        // Initialize chat with user context
-        initializeChatWithUser(currentUser, userProfile)
+        // Widget should auto-initialize with the config we set
         setIsLoadingChat(false)
       }
 
@@ -44,12 +57,6 @@ const ChatPage = ({ user, userProfile }) => {
 
       document.head.appendChild(script)
 
-      // Load CSS
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = 'https://momis-project.replit.app/widget/assets/widget-styles.css'
-      document.head.appendChild(link)
-
     } catch (error) {
       console.error('Error loading chat widget:', error)
       setChatError('An error occurred while loading the chat. Please refresh the page.')
@@ -58,7 +65,27 @@ const ChatPage = ({ user, userProfile }) => {
   }
 
   const initializeChatWithUser = (user, profile) => {
-    // Set user context for the chat widget
+    // Configure chat for full-page mode FIRST
+    const chatContainer = document.getElementById('momi-chat-container')
+    if (chatContainer) {
+      chatContainer.style.height = '100vh'
+      chatContainer.style.width = '100%'
+      chatContainer.style.position = 'relative'
+      chatContainer.classList.add('fullpage-mode')
+    }
+
+    // Initialize the widget in fullpage mode
+    if (window.MOMiWidget) {
+      window.MOMiWidget.init({
+        mode: 'fullpage',
+        userId: user.id,
+        userProfile: profile,
+        container: 'momi-chat-container',
+        apiBaseUrl: window.location.origin
+      })
+    }
+
+    // Fallback: Try to set user context if the old API exists
     if (window.MOMiChat) {
       window.MOMiChat.setUser({
         userId: user.id,
@@ -66,14 +93,6 @@ const ChatPage = ({ user, userProfile }) => {
         profile: profile,
         isAuthenticated: true
       })
-    }
-
-    // Configure chat for full-page mode
-    const chatContainer = document.getElementById('momi-chat-container')
-    if (chatContainer) {
-      chatContainer.style.height = '100vh'
-      chatContainer.style.width = '100%'
-      chatContainer.classList.add('fullpage-mode')
     }
   }
 
@@ -167,7 +186,7 @@ const ChatPage = ({ user, userProfile }) => {
       </div>
 
       {/* Chat Container */}
-      <div id="momi-chat-container" className="chat-container">
+      <div id="momi-chat-container" className="chat-container fullpage-chat">
         {/* Chat widget will be loaded here */}
       </div>
 
