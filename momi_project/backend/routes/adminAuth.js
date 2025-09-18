@@ -23,11 +23,17 @@ const generateSessionToken = () => {
 
 // Helper function to get client IP
 const getClientIP = (req) => {
-    return req.headers['x-forwarded-for'] ||
+    const ipString = req.headers['x-forwarded-for'] ||
            req.headers['x-real-ip'] ||
            req.connection.remoteAddress ||
            req.socket.remoteAddress ||
            (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    
+    // If the IP string contains multiple IPs (e.g., from proxies), take the first one.
+    if (ipString && ipString.includes(',')) {
+        return ipString.split(',')[0].trim();
+    }
+    return ipString;
 };
 
 // Admin login route
