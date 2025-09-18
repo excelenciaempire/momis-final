@@ -56,12 +56,17 @@ function App() {
 
       if (currentUser) {
         setUser(currentUser)
-        // Load profile asynchronously
-        loadUserProfile(currentUser)
+        setLoading(false)
+        setAuthChecked(true)
+
+        // Load profile immediately (not asynchronously)
+        await loadUserProfile(currentUser)
+      } else {
+        setLoading(false)
+        setAuthChecked(true)
       }
     } catch (error) {
       console.error('Error checking user session:', error)
-    } finally {
       setLoading(false)
       setAuthChecked(true)
     }
@@ -115,10 +120,36 @@ function App() {
     setAuthChecked(true)
   }
 
-  // Only show loading on initial app load, not after login
-  // No loading screen - direct navigation
+  // Quick auth check - minimal loading time
   if (!authChecked) {
-    return null // Return nothing while checking auth
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8f4ff 100%)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <img
+            src="/momi-icon-2.png"
+            alt="MOMi"
+            style={{
+              width: '60px',
+              marginBottom: '16px',
+              animation: 'pulse 1.5s ease-in-out infinite'
+            }}
+          />
+          <div style={{
+            color: '#6B46C1',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            Initializing MOMi...
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -192,7 +223,36 @@ function App() {
             path="/chat"
             element={
               user ? (
-                <ChatPage user={user} userProfile={userProfile} />
+                userProfile ? (
+                  <ChatPage user={user} userProfile={userProfile} />
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100vh',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f4ff 100%)'
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <img
+                        src="/momi-icon-2.png"
+                        alt="MOMi"
+                        style={{
+                          width: '60px',
+                          marginBottom: '16px',
+                          animation: 'pulse 1.5s ease-in-out infinite'
+                        }}
+                      />
+                      <div style={{
+                        color: '#6B46C1',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}>
+                        Loading your profile...
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
                 <Navigate to="/login" replace />
               )

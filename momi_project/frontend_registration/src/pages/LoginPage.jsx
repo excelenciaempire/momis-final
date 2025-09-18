@@ -7,6 +7,7 @@ import { supabase } from '../utils/supabaseClient'
 const LoginPage = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const navigate = useNavigate()
 
   const {
@@ -22,6 +23,8 @@ const LoginPage = ({ onLoginSuccess }) => {
 
   const onSubmit = async (data) => {
     setIsLoading(true)
+    setIsRedirecting(false)
+    let willRedirect = false
 
     try {
       // Sign in with Supabase Auth with timeout
@@ -31,7 +34,7 @@ const LoginPage = ({ onLoginSuccess }) => {
       })
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Login timeout')), 15000)
+        setTimeout(() => reject(new Error('Login timeout')), 8000)
       )
 
       const { data: authData, error: authError } = await Promise.race([
@@ -64,7 +67,7 @@ const LoginPage = ({ onLoginSuccess }) => {
         .single()
 
       const profileTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
       )
 
       const { data: profile, error: profileError } = await Promise.race([
@@ -81,6 +84,10 @@ const LoginPage = ({ onLoginSuccess }) => {
           if (onLoginSuccess) {
             onLoginSuccess(authData.user, null)
           }
+          // Mark as redirecting and stop loading
+          willRedirect = true
+          setIsRedirecting(true)
+          setIsLoading(false)
           // Force immediate redirect even without profile
           navigate('/chat', { replace: true })
           return
@@ -98,6 +105,10 @@ const LoginPage = ({ onLoginSuccess }) => {
         onLoginSuccess(authData.user, profile)
       }
 
+      // Mark as redirecting and stop loading before redirect
+      willRedirect = true
+      setIsRedirecting(true)
+      setIsLoading(false)
       // Force immediate redirect to chat
       navigate('/chat', { replace: true })
 
@@ -109,7 +120,10 @@ const LoginPage = ({ onLoginSuccess }) => {
         toast.error('An unexpected error occurred. Please try again.')
       }
     } finally {
-      setIsLoading(false)
+      // Only reset loading if we're not redirecting
+      if (!willRedirect) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -211,17 +225,13 @@ const LoginPage = ({ onLoginSuccess }) => {
               <div className="form-actions">
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="btn btn-primary btn-large btn-full"
+                  disabled={isLoading || isRedirecting}
+                  className={`btn btn-primary btn-large btn-full ${isLoading || isRedirecting ? 'loading' : ''}`}
                 >
-                  {isLoading ? (
-                    <>
-                      <span className="loading-spinner"></span>
-                      Signing In...
-                    </>
-                  ) : (
-                    'Sign In to MOMi'
-                  )}
+                  <span className="btn-content">
+                    {(isLoading || isRedirecting) && <span className="loading-spinner"></span>}
+                    {isRedirecting ? 'Redirecting...' : isLoading ? 'Signing In...' : 'Sign In to MOMi'}
+                  </span>
                 </button>
               </div>
 

@@ -294,10 +294,9 @@ a:hover {
   font-weight: 500;
   font-family: var(--font-family);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
   min-height: 44px;
-  gap: var(--spacing-2);
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -305,7 +304,7 @@ a:hover {
 }
 
 .btn:disabled {
-  opacity: 0.7;
+  opacity: 0.8;
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
@@ -314,7 +313,6 @@ a:hover {
 .btn:disabled:hover {
   transform: none !important;
   box-shadow: none !important;
-  background-color: var(--purple-primary) !important;
 }
 
 .btn-primary {
@@ -326,6 +324,11 @@ a:hover {
   background-color: var(--magenta-vibrant);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0px);
+  transition: transform 0.1s ease;
 }
 
 .btn-primary:active {
@@ -363,6 +366,7 @@ a:hover {
   padding: var(--spacing-4) var(--spacing-8);
   font-size: var(--font-size-lg);
   min-height: 52px;
+  max-height: 52px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -400,6 +404,8 @@ a:hover {
   justify-content: center;
   width: 100%;
   min-height: 20px;
+  gap: 8px;
+  transition: all 0.2s ease;
 }
 
 /* Loading state for buttons */
@@ -409,7 +415,32 @@ a:hover {
 
 .btn.loading .btn-content {
   opacity: 1;
-  transition: opacity 0.2s ease;
+}
+
+/* Ensure loading spinner doesn't cause layout shift */
+.btn .loading-spinner {
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+/* Register link styles */
+.register-link, .login-link {
+  color: var(--purple-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+}
+
+.register-link:hover, .login-link:hover {
+  color: var(--magenta-vibrant);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.register-link:active, .login-link:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
 }
 
 /* Card styles */
@@ -772,11 +803,17 @@ a:hover {
   cursor: pointer;
   padding: 8px;
   border-radius: 6px;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .hamburger-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.hamburger-btn:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
 }
 
 .new-chat-btn-header, .logout-btn-header {
@@ -787,12 +824,18 @@ a:hover {
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .new-chat-btn-header:hover, .logout-btn-header:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.new-chat-btn-header:active, .logout-btn-header:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
 }
 
 /* Full-Width Chat Container */
