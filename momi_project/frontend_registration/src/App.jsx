@@ -115,21 +115,9 @@ function App() {
   }
 
   // Only show loading on initial app load, not after login
-  // Only show loading on very first app load
+  // No loading screen - direct navigation
   if (!authChecked) {
-    return (
-      <div className="app-loading">
-        <div className="loading-container">
-          <img
-            src="/momi-icon-2.png"
-            alt="MOMi Logo"
-            className="loading-logo"
-          />
-          <div className="loading-spinner large"></div>
-          <h2>Loading MOMi...</h2>
-        </div>
-      </div>
-    )
+    return null // Return nothing while checking auth
   }
 
   return (
@@ -196,7 +184,7 @@ function App() {
           />
 
           <Route path="/terms" element={<TermsPage />} />
-          <Route path="/email-confirmation" element={<EmailConfirmationPage />} />
+          {/* <Route path="/email-confirmation" element={<EmailConfirmationPage />} /> */}
 
           {/* Protected Routes */}
           <Route
