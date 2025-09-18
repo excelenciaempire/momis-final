@@ -1,39 +1,45 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
-// import { useNavigate } from 'react-router-dom'; // Not strictly needed if App.jsx handles redirect
-import './LoginPage.css'; // Keep for page-specific layout if any
+import apiClient from '../apiClient'; // Import the axios client
+import { useNavigate } from 'react-router-dom';
+import './LoginPage.css';
 
-const LoginPage = () => {
+const LoginPage = ({ onLogin }) => { // Accept onLogin prop to update session state in App
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // const navigate = useNavigate(); // Not strictly needed
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    if (!supabase) {
-        setError("Supabase client not available. Please check configuration.");
-        setLoading(false);
-        return;
-    }
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
-      // Navigation will be handled by App.jsx due to session state change
-      // navigate('/'); 
+      // Call the backend admin login endpoint
+      const response = await apiClient.post('/admin/auth/login', { email, password });
+      
+      const { sessionToken, admin } = response.data;
+      
+      // Store the token in localStorage
+      localStorage.setItem('admin-session-token', sessionToken);
+      localStorage.setItem('admin-user', JSON.stringify(admin));
+
+      // Notify parent component about the successful login
+      onLogin(admin);
+      
+      // Navigate to the dashboard
+      navigate('/');
+
     } catch (err) {
-      setError(err.error_description || err.message);
+      setError(err.response?.data?.error || err.message || 'An unexpected error occurred.');
     }
     setLoading(false);
   };
 
   return (
-    <div className="login-page-container"> {/* This class can center the form on the page */}
-      <div className="card login-card"> {/* Use card style for the form box */}
-        <h2 className="page-header text-center">Admin Login</h2> {/* Use page-header for title */}
+    <div className="login-page-container">
+      <div className="card login-card">
+        <h2 className="page-header text-center">MOMI Admin Login</h2>
         
         {error && <p className="error-message">{error}</p>}
         
@@ -45,7 +51,7 @@ const LoginPage = () => {
               id="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="you@example.com"
+              placeholder="admin@example.com"
               required 
             />
           </div>
@@ -64,7 +70,6 @@ const LoginPage = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        {/* TODO: Link to password recovery or contact admin */}
       </div>
     </div>
   );
