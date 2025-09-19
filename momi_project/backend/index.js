@@ -100,31 +100,42 @@ app.use(cors({
 
 // --- Middleware for serving static frontend files ---
 
-// Serve Registration Frontend (from momi_project/frontend_registration/dist)
+// Define paths first
 const registrationDistPath = path.join(__dirname, '../frontend_registration/dist');
-app.use(express.static(registrationDistPath));
-
-// Serve Admin Panel (from momi_project/frontend_admin/dist)
-// All /admin/* routes should serve the admin panel's index.html for client-side routing
 const adminDistPath = path.join(__dirname, '../frontend_admin/dist');
-app.use('/admin', express.static(adminDistPath));
-app.get( /^\/admin\/.*/ , (req, res) => { // Changed to use a RegExp for Express 5 compatibility
-    res.sendFile(path.join(adminDistPath, 'index.html'));
-});
-
-// Serve Chat Widget static assets (from momi_project/frontend_widget/dist)
-// This allows the widget's JS/CSS to be loaded, e.g., by the landing page or for testing.
 const widgetDistPath = path.join(__dirname, '../frontend_widget/dist');
-app.use('/widget', express.static(widgetDistPath));
-// If the widget has an index.html for testing, you could serve it too:
-// app.get('/widget', (req, res) => {
-//     res.sendFile(path.join(widgetDistPath, 'index.html'));
-// });
+
+// Serve specific routes FIRST (before generic static middleware)
+// Root route - serve main app
+app.get('/', (req, res) => {
+    const indexPath = path.join(registrationDistPath, 'index.html');
+    console.log('Serving root route from:', indexPath);
+    res.sendFile(indexPath);
+});
 
 // Serve Registration Frontend SPA routes
 app.get(['/register', '/login', '/chat', '/terms', '/email-confirmation'], (req, res) => {
     res.sendFile(path.join(registrationDistPath, 'index.html'));
 });
+
+// Admin routes - serve admin panel for /admin/* paths ONLY
+app.get('/admin', (req, res) => {
+    res.redirect('/admin/login');
+});
+
+app.get( /^\/admin\/.*/ , (req, res) => { 
+    res.sendFile(path.join(adminDistPath, 'index.html'));
+});
+
+// Static file serving (AFTER specific routes)
+// Serve Registration Frontend static assets (for root and other paths)
+app.use('/', express.static(registrationDistPath, { index: false })); // Don't serve index.html automatically
+
+// Serve Admin Panel static assets ONLY under /admin path
+app.use('/admin', express.static(adminDistPath));
+
+// Serve Chat Widget static assets
+app.use('/widget', express.static(widgetDistPath));
 
 // Initialize Supabase client
 // It's recommended to use the SERVICE_ROLE_KEY for backend operations 
@@ -2193,14 +2204,19 @@ app.get('/widget/fullpage', (req, res) => {
 });
 
 // --- Root and Test Routes (keep for basic checks) ---
-app.get('/', (req, res) => {
-    // Serve the main registration/login app's entry point
-    const indexPath = path.join(__dirname, '../frontend_registration/dist', 'index.html');
-    console.log('Serving root route from:', indexPath);
-    res.sendFile(indexPath);
-});
+// Root route is now handled above in the middleware section
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route is working! Supra client: ' + (supabase ? 'OK' : 'FAIL') + ', OpenAI client: ' + (openai ? 'OK' : 'FAIL'), serviceKeySet: !!supabaseServiceKey });
+});
+
+// Debug route to test what's being served
+app.get('/debug-root', (req, res) => {
+    res.json({ 
+        message: 'Debug: This should be the main app, not admin',
+        timestamp: new Date().toISOString(),
+        path: req.path,
+        url: req.url
+    });
 });
 
 const setupDatabaseFunctions = async () => {

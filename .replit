@@ -62,18 +62,13 @@ runButton = "Full Stack Dev"
 
 [[workflows.workflow]]
 name = "Full Stack Dev"
-mode = "parallel"
+mode = "sequential"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node momi_project/backend/index.js"
 waitForPort = 3001
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd momi_project/frontend_admin && npm run dev"
-waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
