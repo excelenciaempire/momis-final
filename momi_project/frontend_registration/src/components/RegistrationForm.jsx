@@ -211,6 +211,8 @@ const RegistrationForm = ({ onSuccess }) => {
             first_name: data.firstName,
             last_name: data.lastName,
             ...profileData
+          }, {
+            onConflict: 'auth_user_id'
           })
 
         if (updateError) {
