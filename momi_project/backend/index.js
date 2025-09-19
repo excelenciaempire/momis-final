@@ -114,7 +114,7 @@ app.get('/', (req, res) => {
 });
 
 // Serve Registration Frontend SPA routes
-app.get(['/register', '/login', '/chat', '/terms', '/email-confirmation'], (req, res) => {
+app.get(['/register', '/login', '/chat', '/terms', '/email-confirmation', '/confirm-email'], (req, res) => {
     res.sendFile(path.join(registrationDistPath, 'index.html'));
 });
 
