@@ -9,7 +9,22 @@
       "Bash(timeout:*)",
       "Bash(npm audit:*)",
       "Bash(npm run build:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(grep:*)",
+      "Bash(claude mcp)",
+      "Bash(claude mcp:*)",
+      "Bash(cat:*)",
+      "Bash(supabase:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" supabase projects list)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" supabase link --project-ref=qohvdyqsulzzdtvavpgz)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" supabase db push)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_fa4c22af9f7c8181486d9d1453afd98422f135fa\" supabase db pull)",
+      "Bash(chmod:*)",
+      "Bash(./execute_sql_chunks.sh:*)",
+      "Bash(RAISE NOTICE '\\''✅ Extensión vector habilitada correctamente'\\'')",
+      "Bash(EXCEPTION WHEN undefined_object THEN RAISE EXCEPTION '\\''❌ Error: Extensión vector no disponible. Ve a Database → Extensions y habilita \"\"vector\"\"'\\'')",
+      "Bash(\")"
     ],
     "deny": [],
     "ask": []

@@ -5,7 +5,7 @@ import ChatWindow from './components/ChatWindow';
 import './App.css';
 
 // Set the base URL for all Axios requests
-axios.defaults.baseURL = 'https://momis-project.replit.app'; // Your deployed backend URL
+axios.defaults.baseURL = window.location.origin; // Use current origin for Replit
 
 function App({ mode = 'floating', userId = null, userProfile = null }) {
     const [isOpen, setIsOpen] = useState(mode === 'fullpage');

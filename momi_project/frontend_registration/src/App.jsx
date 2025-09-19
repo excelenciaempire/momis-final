@@ -52,7 +52,13 @@ function App() {
 
   const checkUserSession = async () => {
     try {
-      const currentUser = await getCurrentUser()
+      // Quick timeout for faster initial load
+      const userPromise = getCurrentUser()
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Session check timeout')), 2000)
+      )
+
+      const currentUser = await Promise.race([userPromise, timeoutPromise])
 
       if (currentUser) {
         setUser(currentUser)
@@ -67,6 +73,9 @@ function App() {
       }
     } catch (error) {
       console.error('Error checking user session:', error)
+      // If session check fails/times out, assume no user
+      setUser(null)
+      setUserProfile(null)
       setLoading(false)
       setAuthChecked(true)
     }
@@ -74,7 +83,13 @@ function App() {
 
   const loadUserProfile = async (authUser) => {
     try {
-      const profile = await getUserProfile(authUser.id)
+      // Add timeout to profile loading too
+      const profilePromise = getUserProfile(authUser.id)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile load timeout')), 3000)
+      )
+
+      const profile = await Promise.race([profilePromise, timeoutPromise])
       setUserProfile(profile)
     } catch (error) {
       console.error('Error loading user profile:', error)
@@ -135,17 +150,18 @@ function App() {
             src="/momi-icon-2.png"
             alt="MOMi"
             style={{
-              width: '60px',
-              marginBottom: '16px',
-              animation: 'pulse 1.5s ease-in-out infinite'
+              width: '40px',
+              marginBottom: '12px',
+              opacity: '0.8'
             }}
           />
           <div style={{
             color: '#6B46C1',
-            fontSize: '14px',
-            fontWeight: '500'
+            fontSize: '12px',
+            fontWeight: '400',
+            opacity: '0.7'
           }}>
-            Initializing MOMi...
+            Loading...
           </div>
         </div>
       </div>
@@ -223,36 +239,17 @@ function App() {
             path="/chat"
             element={
               user ? (
-                userProfile ? (
-                  <ChatPage user={user} userProfile={userProfile} />
-                ) : (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100vh',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f4ff 100%)'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <img
-                        src="/momi-icon-2.png"
-                        alt="MOMi"
-                        style={{
-                          width: '60px',
-                          marginBottom: '16px',
-                          animation: 'pulse 1.5s ease-in-out infinite'
-                        }}
-                      />
-                      <div style={{
-                        color: '#6B46C1',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}>
-                        Loading your profile...
-                      </div>
-                    </div>
-                  </div>
-                )
+                <ChatPage user={user} userProfile={userProfile || {
+                  auth_user_id: user.id,
+                  email: user.email,
+                  first_name: user.user_metadata?.first_name || 'User',
+                  last_name: user.user_metadata?.last_name || '',
+                  family_roles: [],
+                  children_count: 0,
+                  main_concerns: [],
+                  dietary_preferences: [],
+                  personalized_support: false
+                }} />
               ) : (
                 <Navigate to="/login" replace />
               )

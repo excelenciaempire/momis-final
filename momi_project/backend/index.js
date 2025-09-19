@@ -1,4 +1,5 @@
-require('dotenv').config();
+// Variables de entorno configuradas en Replit Secrets:
+// SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENAI_API_KEY, SESSION_SECRET
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { OpenAI } = require('openai');
@@ -52,11 +53,15 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // --- CORS Configuration ---
-// Define allowed origins
+// Define allowed origins for Replit environment
 const allowedOrigins = [
   'https://7pillarsmission.com',
+  // Replit domains
   /.*\.replit\.dev$/,
-  /.*\.repl\.co$/
+  /.*\.repl\.co$/,
+  /.*\.replit\.app$/,
+  // Add any additional domains from environment if needed
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ];
 
 const corsOptions = {
@@ -81,10 +86,12 @@ const corsOptions = {
   // allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Specify allowed headers
 };
 
-// Enable CORS for all routes with updated options
+// Enable CORS for all routes - optimized for Replit
 app.use(cors({
-  origin: true, // Allow all origins for now
-  credentials: true
+  origin: true, // Allow all origins for Replit environment
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 // If you want to be more specific and only apply CORS to the /widget path:
 // app.use('/widget', cors(corsOptions), express.static(widgetDistPath));
@@ -1725,7 +1732,7 @@ app.post('/api/chat/message', async (req, res) => {
         return res.status(401).json({
             error: 'Authentication required. Please register or log in to continue using MOMi.',
             action: 'redirect_to_registration',
-            registrationUrl: 'https://momis-project.replit.app/register'
+            registrationUrl: `${req.protocol}://${req.get('host')}/register`
         });
     }
 
@@ -1733,7 +1740,7 @@ app.post('/api/chat/message', async (req, res) => {
     return res.status(400).json({
         error: 'Please use the new chat interface at /chat',
         action: 'redirect_to_chat',
-        chatUrl: 'https://momis-project.replit.app/chat'
+        chatUrl: `${req.protocol}://${req.get('host')}/chat`
     });
 
     try {

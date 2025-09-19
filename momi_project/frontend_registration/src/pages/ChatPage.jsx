@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase, getCurrentUser } from '../utils/supabaseClient'
 import toast from 'react-hot-toast'
 import axios from 'axios'
@@ -6,6 +7,7 @@ import axios from 'axios'
 const ChatPage = ({ user, userProfile }) => {
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
+  const navigate = useNavigate()
   const [isSending, setIsSending] = useState(false)
   const [conversationId, setConversationId] = useState(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -20,6 +22,50 @@ const ChatPage = ({ user, userProfile }) => {
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
+  // Device and browser capability detection
+  const capabilities = useMemo(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
+    return {
+      isMobile,
+      isIOS,
+      isAndroid,
+      isSafari,
+      hasMediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+      hasFileReader: typeof FileReader !== 'undefined',
+      hasIndexedDB: 'indexedDB' in window,
+      hasLocalStorage: (() => {
+        try {
+          localStorage.setItem('test', 'test')
+          localStorage.removeItem('test')
+          return true
+        } catch {
+          return false
+        }
+      })(),
+      hasFormData: typeof FormData !== 'undefined',
+      hasBlob: typeof Blob !== 'undefined'
+    }
+  }, [])
+
+  // Memoize user display name for performance
+  const userName = useMemo(() => {
+    return userProfile?.first_name ||
+           user?.user_metadata?.first_name ||
+           user?.email?.split('@')[0] ||
+           'there'
+  }, [userProfile?.first_name, user?.user_metadata?.first_name, user?.email])
+
+  // Memoize conversation list rendering
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) =>
+      new Date(b.last_message_at || b.created_at) - new Date(a.last_message_at || a.created_at)
+    )
+  }, [conversations])
+
   useEffect(() => {
     initializeChat()
   }, [])
@@ -28,12 +74,13 @@ const ChatPage = ({ user, userProfile }) => {
     scrollToBottom()
   }, [messages])
 
+  // Optimize network status listeners
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
       toast.success('Connection restored')
     }
-    
+
     const handleOffline = () => {
       setIsOnline(false)
       toast.error('Connection lost. Some features may not work.')
@@ -48,16 +95,29 @@ const ChatPage = ({ user, userProfile }) => {
     }
   }, [])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  // Cleanup function for component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any ongoing recordings
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop()
+      }
+      // Clean up selected image
+      if (selectedImage) {
+        setSelectedImage(null)
+        setImagePreview('')
+      }
+    }
+  }, [])
 
-  const initializeChat = async () => {
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [])
+
+  const initializeChat = useCallback(async () => {
     try {
-      // Get welcome message
-      const userName = userProfile?.first_name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'there'
       const welcomeMessage = {
-        id: Date.now(),
+        id: `welcome-${Date.now()}`,
         sender_type: 'momi',
         content: `Hi ${userName}! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
         timestamp: new Date().toISOString()
@@ -67,14 +127,14 @@ const ChatPage = ({ user, userProfile }) => {
       console.error('Error initializing chat:', error)
       // Fallback welcome message
       const welcomeMessage = {
-        id: Date.now(),
+        id: `welcome-fallback-${Date.now()}`,
         sender_type: 'momi',
         content: `Hi there! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
         timestamp: new Date().toISOString()
       }
       setMessages([welcomeMessage])
     }
-  }
+  }, [userName])
 
   const fetchConversations = async () => {
     if (!user?.id) return
@@ -148,60 +208,137 @@ const ChatPage = ({ user, userProfile }) => {
 
       // Handle image upload
       if (imageFile) {
-        const formData = new FormData()
-        formData.append('image', imageFile)
-        formData.append('message', messageText || '')
-        formData.append('conversationId', conversationId || '')
+        try {
+          const formData = new FormData()
+          formData.append('image', imageFile)
+          formData.append('message', messageText || '')
+          formData.append('conversationId', conversationId || '')
+          formData.append('userId', user.id) // Add user ID for better tracking
 
-        const uploadResponse = await axios.post('/api/chat/upload-image', formData, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          },
-          timeout: 60000 // 60 second timeout for image upload
-        })
+          const uploadResponse = await axios.post('/api/chat/upload-image', formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            },
+            timeout: 60000, // 60 second timeout for image upload
+            maxContentLength: 10 * 1024 * 1024, // 10MB limit
+            maxBodyLength: 10 * 1024 * 1024 // 10MB limit
+          })
 
-        requestData.imageUrl = uploadResponse.data.imageUrl
+          if (!uploadResponse.data?.imageUrl) {
+            throw new Error('Invalid response from image upload service')
+          }
+
+          requestData.imageUrl = uploadResponse.data.imageUrl
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError)
+
+          // Remove the image message from UI
+          setMessages(prev => prev.slice(0, -1))
+
+          if (uploadError.code === 'ECONNABORTED') {
+            toast.error('Image upload timed out. Please try with a smaller image.')
+          } else if (uploadError.response?.status === 413) {
+            toast.error('Image is too large. Please use an image smaller than 10MB.')
+          } else if (uploadError.response?.status === 401) {
+            toast.error('Session expired. Please log in again.')
+            setTimeout(() => navigate('/login'), 2000)
+          } else {
+            toast.error('Failed to upload image. Please try again.')
+          }
+
+          setIsSending(false)
+          return
+        }
       }
 
+      // Add user context to request for better tracking
+      requestData.userId = user.id
+      requestData.userEmail = user.email
+
       const response = await axios.post('/api/chat/message', requestData, {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-User-ID': user.id, // Additional header for backend tracking
         },
         timeout: 30000
       })
 
+      // Validate response
+      if (!response.data || typeof response.data.reply !== 'string') {
+        throw new Error('Invalid response from chat service')
+      }
+
       const momiMessage = {
-        id: Date.now() + 1,
+        id: response.data.messageId || `${Date.now()}-${Math.random()}`,
         sender_type: 'momi',
-        content: response.data.reply || 'I apologize, but I encountered an issue processing your message. Please try again.',
-        timestamp: new Date().toISOString()
+        content: response.data.reply,
+        timestamp: response.data.timestamp || new Date().toISOString(),
+        conversationId: response.data.conversationId
       }
 
       setMessages(prev => [...prev, momiMessage])
+
+      // Update conversation ID if provided
       if (response.data.conversationId && !conversationId) {
         setConversationId(response.data.conversationId)
       }
 
     } catch (error) {
       console.error('Error sending message:', error)
-      
-      const errorMessage = {
-        id: Date.now() + 1,
-        sender_type: 'momi',
-        content: 'I apologize, but I\'m having trouble responding right now. Please check your connection and try again.',
-        timestamp: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, errorMessage])
-      
-      if (error.response?.status === 401) {
+
+      // Remove the user message from UI if sending failed
+      setMessages(prev => prev.slice(0, -1))
+
+      let errorMessage = 'I apologize, but I\'m having trouble responding right now. Please try again.'
+      let shouldRetry = false
+
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please check your connection and try again.'
+        toast.error('Message timed out. Please try again.')
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log in again.'
         toast.error('Session expired. Please log in again.')
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 2000)
+        setTimeout(() => navigate('/login'), 2000)
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. Please check your permissions.'
+        toast.error('Access denied. Please log in again.')
+        setTimeout(() => navigate('/login'), 2000)
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment before sending another message.'
+        toast.error('Please wait a moment before sending another message.')
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Our servers are temporarily unavailable. Please try again in a moment.'
+        toast.error('Server temporarily unavailable. Please try again.')
+        shouldRetry = true
+      } else if (!navigator.onLine) {
+        errorMessage = 'You appear to be offline. Please check your internet connection.'
+        toast.error('You appear to be offline. Please check your connection.')
+        shouldRetry = true
       } else {
         toast.error('Failed to send message. Please try again.')
+        shouldRetry = true
+      }
+
+      // Add error message to chat
+      const errorMsgObj = {
+        id: `error-${Date.now()}-${Math.random()}`,
+        sender_type: 'momi',
+        content: errorMessage,
+        timestamp: new Date().toISOString(),
+        isError: true
+      }
+      setMessages(prev => [...prev, errorMsgObj])
+
+      // Auto-retry for certain errors after a delay
+      if (shouldRetry && messageText) {
+        setTimeout(() => {
+          if (navigator.onLine) {
+            console.log('Auto-retrying message send...')
+            // Don't auto-retry to avoid infinite loops
+          }
+        }, 5000)
       }
     } finally {
       setIsSending(false)
@@ -264,7 +401,8 @@ const ChatPage = ({ user, userProfile }) => {
         toast.error('Failed to log out properly')
       } else {
         toast.success('Logged out successfully')
-        window.location.href = '/login'
+        // Use React Router navigation instead of window.location
+        navigate('/login', { replace: true })
       }
     } catch (error) {
       console.error('Unexpected logout error:', error)
@@ -280,23 +418,66 @@ const ChatPage = ({ user, userProfile }) => {
   }
 
   // Image handling functions
-  const handleImageUpload = (e) => {
+  const handleImageUpload = useCallback((e) => {
     const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error('Image size must be less than 10MB')
-        return
-      }
-      
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => setImagePreview(e.target.result)
-      reader.readAsDataURL(file)
-      toast.success('Image selected! Add a message or send as is.')
-    } else {
-      toast.error('Please select a valid image file')
+
+    if (!file) return
+
+    // Check browser capabilities
+    if (!capabilities.hasFileReader) {
+      toast.error('Image upload is not supported in your browser')
+      return
     }
-  }
+
+    if (!capabilities.hasFormData || !capabilities.hasBlob) {
+      toast.error('File upload is not supported in your browser')
+      return
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)')
+      return
+    }
+
+    // Dynamic file size limit based on device
+    const maxSize = capabilities.isMobile ? 5 * 1024 * 1024 : 10 * 1024 * 1024 // 5MB for mobile, 10MB for desktop
+    if (file.size > maxSize) {
+      const sizeText = capabilities.isMobile ? '5MB' : '10MB'
+      toast.error(`Image size must be less than ${sizeText}`)
+      return
+    }
+
+    // Validate user authentication
+    if (!user?.id) {
+      toast.error('Please log in to upload images')
+      return
+    }
+
+    setSelectedImage(file)
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        setImagePreview(e.target.result)
+        toast.success('Image selected! Add a message or send as is.')
+      } catch (error) {
+        console.error('Error reading image file:', error)
+        toast.error('Error reading image file. Please try another image.')
+        setSelectedImage(null)
+        setImagePreview('')
+      }
+    }
+
+    reader.onerror = () => {
+      toast.error('Error reading image file. Please try another image.')
+      setSelectedImage(null)
+      setImagePreview('')
+    }
+
+    reader.readAsDataURL(file)
+  }, [capabilities, user?.id])
 
   const removeImage = () => {
     setSelectedImage(null)
@@ -307,27 +488,113 @@ const ChatPage = ({ user, userProfile }) => {
   // Voice recording functions
   const startVoiceRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      // Check user authentication
+      if (!user?.id) {
+        toast.error('Please log in to use voice messages')
+        return
+      }
+
+      // Check browser capabilities
+      if (!capabilities.hasMediaDevices) {
+        toast.error('Voice recording is not supported in your browser')
+        return
+      }
+
+      if (!capabilities.hasBlob) {
+        toast.error('Voice recording requires modern browser features not available')
+        return
+      }
+
+      // Request microphone access with device-specific constraints
+      const audioConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        // Lower sample rate for mobile devices to reduce bandwidth
+        sampleRate: capabilities.isMobile ? 22050 : 44100
+      }
+
+      // iOS specific adjustments
+      if (capabilities.isIOS) {
+        audioConstraints.channelCount = 1 // Mono for better iOS compatibility
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints
+      })
+
+      // Check MediaRecorder support
+      const options = { mimeType: 'audio/webm' }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'audio/ogg'
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options.mimeType = 'audio/wav'
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            toast.error('Audio recording is not supported in your browser')
+            stream.getTracks().forEach(track => track.stop())
+            return
+          }
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, options)
       const audioChunks = []
 
       recorder.ondataavailable = (event) => {
-        audioChunks.push(event.data)
+        if (event.data.size > 0) {
+          audioChunks.push(event.data)
+        }
       }
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-        await transcribeAudio(audioBlob)
-        stream.getTracks().forEach(track => track.stop())
+        try {
+          const audioBlob = new Blob(audioChunks, { type: options.mimeType })
+
+          // Validate audio blob
+          if (audioBlob.size === 0) {
+            toast.error('No audio was recorded. Please try again.')
+            return
+          }
+
+          if (audioBlob.size > 25 * 1024 * 1024) { // 25MB limit
+            toast.error('Audio recording is too long. Please keep it under 5 minutes.')
+            return
+          }
+
+          await transcribeAudio(audioBlob)
+        } catch (error) {
+          console.error('Error processing audio:', error)
+          toast.error('Error processing audio recording. Please try again.')
+        } finally {
+          stream.getTracks().forEach(track => track.stop())
+        }
       }
 
-      recorder.start()
+      recorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event.error)
+        toast.error('Recording error occurred. Please try again.')
+        stream.getTracks().forEach(track => track.stop())
+        setIsRecording(false)
+        setMediaRecorder(null)
+      }
+
+      recorder.start(1000) // Collect data every second
       setMediaRecorder(recorder)
       setIsRecording(true)
       toast.success('Recording started! Tap again to stop.')
+
     } catch (error) {
       console.error('Error starting recording:', error)
-      toast.error('Unable to access microphone. Please check permissions.')
+
+      if (error.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow microphone access and try again.')
+      } else if (error.name === 'NotFoundError') {
+        toast.error('No microphone found. Please connect a microphone and try again.')
+      } else if (error.name === 'NotSupportedError') {
+        toast.error('Audio recording is not supported in your browser.')
+      } else {
+        toast.error('Unable to access microphone. Please check permissions and try again.')
+      }
     }
   }
 
@@ -342,29 +609,57 @@ const ChatPage = ({ user, userProfile }) => {
 
   const transcribeAudio = async (audioBlob) => {
     try {
-      const formData = new FormData()
-      formData.append('audio', audioBlob, 'voice-message.webm')
-      
       const token = (await supabase.auth.getSession()).data.session?.access_token
+
+      if (!token) {
+        toast.error('Session expired. Please log in again.')
+        setTimeout(() => navigate('/login'), 2000)
+        return
+      }
+
+      const formData = new FormData()
+      // Use appropriate filename based on blob type
+      const fileExtension = audioBlob.type.includes('webm') ? '.webm' :
+                          audioBlob.type.includes('ogg') ? '.ogg' : '.wav'
+      formData.append('audio', audioBlob, `voice-message-${Date.now()}${fileExtension}`)
+      formData.append('userId', user.id) // Add user ID for tracking
+
       const response = await axios.post('/api/chat/speech-to-text', formData, {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 30000
+        timeout: 45000, // Increased timeout for audio processing
+        maxContentLength: 25 * 1024 * 1024, // 25MB limit
+        maxBodyLength: 25 * 1024 * 1024 // 25MB limit
       })
 
-      const transcript = response.data.transcript
-      if (transcript?.trim()) {
+      const transcript = response.data?.transcript?.trim()
+
+      if (transcript) {
         // Send the transcribed message
         await sendMessage(transcript, selectedImage)
         toast.success('Voice message sent!')
       } else {
-        toast.error('Could not understand the audio. Please try again.')
+        toast.error('Could not understand the audio. Please speak clearly and try again.')
       }
     } catch (error) {
       console.error('Error transcribing audio:', error)
-      toast.error('Failed to process voice message. Please try again.')
+
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Audio processing timed out. Please try with a shorter recording.')
+      } else if (error.response?.status === 413) {
+        toast.error('Audio file is too large. Please record a shorter message.')
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.')
+        setTimeout(() => navigate('/login'), 2000)
+      } else if (error.response?.status === 422) {
+        toast.error('Audio format not supported. Please try again.')
+      } else if (error.response?.status === 429) {
+        toast.error('Too many requests. Please wait a moment and try again.')
+      } else {
+        toast.error('Failed to process voice message. Please try again.')
+      }
     } finally {
       setIsTranscribing(false)
     }
