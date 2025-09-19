@@ -325,40 +325,49 @@ const ChatPage = ({ user, userProfile }) => {
   }
 
   return (
-    <div className="momi-chat-container">
-      {/* Header */}
-      <div className="momi-header">
-        <div className="momi-header-content">
-          <div className="momi-brand">
-            <div className="momi-avatar">M</div>
-            <div className="momi-info">
-              <h1>MOMi</h1>
-              <p>Your Wellness Assistant</p>
+    <div className="chat-page-fullscreen">
+      {/* Chat Window Main Content */}
+      <div className="chat-window-main-content fullpage-mode">
+        {/* Header */}
+        <div className="chat-window-header">
+          <div className="header-content-left">
+            <div className="chat-window-header-logo">
+              <span>M</span>
+            </div>
+            <div className="header-titles">
+              <h2 className="chat-window-title">MOMi</h2>
+              <p className="chat-window-subtitle">Your Wellness Assistant</p>
             </div>
           </div>
-          <div className="user-info">
-            <span>Hello, {userName}!</span>
-            <div className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></div>
+          <div className="header-content-right">
+            <span style={{ color: 'white', fontSize: '0.9em', marginRight: '10px' }}>Hello, {userName}!</span>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)} 
+              className="hamburger-button" 
+              aria-label="Open conversations menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Messages Area */}
-      <div className="momi-messages-area">
-        <div className="momi-messages-container">
+        {/* Messages List */}
+        <div className="message-list">
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`momi-message-wrapper ${message.sender_type === 'user' ? 'user-message' : 'bot-message'}`}
+              className={`message-item ${message.sender_type} text`}
             >
-              <div className="momi-message-avatar">
-                {message.sender_type === 'user' ? (
-                  <div className="user-avatar">{userName.charAt(0).toUpperCase()}</div>
-                ) : (
-                  <div className="bot-avatar">M</div>
-                )}
-              </div>
-              <div className="momi-message-bubble">
+              {message.sender_type === 'momi' && (
+                <div className="momi-avatar">
+                  <span>M</span>
+                </div>
+              )}
+              <div className="message-content">
                 {message.image_url && (
                   <img 
                     src={message.image_url} 
@@ -368,19 +377,16 @@ const ChatPage = ({ user, userProfile }) => {
                   />
                 )}
                 <p>{message.content}</p>
-                <small className="message-timestamp">
-                  {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </small>
               </div>
             </div>
           ))}
           
           {isSending && (
-            <div className="momi-message-wrapper bot-message">
-              <div className="momi-message-avatar">
-                <div className="bot-avatar">M</div>
+            <div className="message-item momi text">
+              <div className="momi-avatar">
+                <span>M</span>
               </div>
-              <div className="momi-message-bubble typing">
+              <div className="message-content">
                 <div className="typing-indicator">
                   <span></span>
                   <span></span>
@@ -391,95 +397,152 @@ const ChatPage = ({ user, userProfile }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-      </div>
 
-      {/* Image Preview */}
-      {imagePreview && (
-        <div className="image-preview-container">
-          <div className="image-preview">
-            <img src={imagePreview} alt="Preview" />
-            <button className="remove-image-btn" onClick={removeImage}>×</button>
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="image-preview-container">
+            <img src={imagePreview} alt="Preview" className="image-preview" />
+            <button type="button" onClick={removeImage} className="remove-image-btn">×</button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Input Area */}
-      <div className="momi-input-area">
-        <div className="momi-input-container">
-          <div className="input-actions">
-            <button 
-              className="action-btn voice-btn"
+        {/* Message Input */}
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="message-input-form">
+          <div className="input-controls">
+            <button
+              type="button"
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isTranscribing}
-              title={isRecording ? "Stop recording" : "Start voice message"}
+              className={`control-button voice-button ${isSending || isTranscribing ? 'disabled' : ''} ${isRecording ? 'recording' : ''}`}
+              disabled={isSending || isTranscribing}
+              aria-label={isRecording ? "Stop recording" : "Use voice input"}
             >
               {isRecording ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M6 6h12v12H6z"/>
                 </svg>
               ) : isTranscribing ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                <svg width="22" height="22" viewBox="0 0 120 30" fill="currentColor">
+                  <circle cx="15" cy="15" r="15">
+                    <animate attributeName="r" from="15" to="15" begin="0s" dur="0.8s" values="15;9;15" calcMode="linear" repeatCount="indefinite" />
+                    <animate attributeName="fill-opacity" from="1" to="1" begin="0s" dur="0.8s" values="1;.5;1" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="60" cy="15" r="9" fillOpacity="0.3">
+                    <animate attributeName="r" from="9" to="9" begin="0s" dur="0.8s" values="9;15;9" calcMode="linear" repeatCount="indefinite" />
+                    <animate attributeName="fill-opacity" from="0.5" to="0.5" begin="0s" dur="0.8s" values=".5;1;.5" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="105" cy="15" r="15">
+                    <animate attributeName="r" from="15" to="15" begin="0s" dur="0.8s" values="15;9;15" calcMode="linear" repeatCount="indefinite" />
+                    <animate attributeName="fill-opacity" from="1" to="1" begin="0s" dur="0.8s" values="1;.5;1" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
                 </svg>
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                  <line x1="12" y1="19" x2="12" y2="23"></line>
-                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
                 </svg>
               )}
             </button>
-            
-            <button 
-              className="action-btn image-btn"
-              onClick={() => fileInputRef.current?.click()}
-              title="Upload image"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21,15 16,10 5,21"></polyline>
-              </svg>
-            </button>
+
             <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
-              style={{ display: 'none' }}
+              type="file" accept="image/*" onChange={handleImageSelect}
+              ref={fileInputRef} style={{display: 'none'}} id="imageUploadInput"
             />
-          </div>
-          
-          <div className="input-main">
-            <textarea
+            <label htmlFor="imageUploadInput" className={`control-button image-upload-button ${isSending || isRecording || isTranscribing ? 'disabled' : ''}`} aria-label="Upload image">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 13c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+                <circle cx="12" cy="12" r="3.2"/>
+              </svg>
+            </label>
+
+            <input
+              type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              disabled={isSending || !isOnline}
-              rows="1"
-              className="momi-textarea"
+              placeholder={isRecording ? "Recording..." : (isTranscribing ? "Transcribing..." : "Type your message...")}
+              className="text-input"
+              disabled={isSending || isRecording || isTranscribing}
+              autoComplete="off"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck="true"
+              enterKeyHint="send"
             />
-            <button
-              onClick={() => sendMessage()}
-              disabled={(!inputText.trim() && !selectedImage) || isSending || !isOnline}
-              className="send-btn"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
-              </svg>
+
+            <button type="submit" className="control-button send-button" disabled={isSending || isRecording || isTranscribing || (!inputText.trim() && !selectedImage)}>
+              {isSending ? (
+                <svg width="22" height="22" viewBox="0 0 120 30" fill="currentColor">
+                  <circle cx="15" cy="15" r="15">
+                    <animate attributeName="r" from="15" to="15" begin="0s" dur="0.8s" values="15;9;15" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="60" cy="15" r="9" fillOpacity="0.3">
+                    <animate attributeName="r" from="9" to="9" begin="0s" dur="0.8s" values="9;15;9" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="105" cy="15" r="15">
+                    <animate attributeName="r" from="15" to="15" begin="0s" dur="0.8s" values="15;9;15" calcMode="linear" repeatCount="indefinite" />
+                  </circle>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              )}
             </button>
           </div>
+        </form>
+
+        {/* Footer */}
+        <div className="chat-disclaimer">
+          <p>MOMi is an AI Chatbot. Information provided is not a substitute for professional medical advice. Always consult with a qualified healthcare provider for any health concerns.</p>
         </div>
       </div>
 
-      {/* Footer Disclaimer */}
-      <div className="momi-footer">
-        <p>MOMi is an AI Chatbot. Information provided is not a substitute for professional medical advice. Always consult with a qualified healthcare provider for any health concerns.</p>
-      </div>
+      {/* Conversations Menu Overlay */}
+      {isMenuOpen && (
+        <div className="menu-overlay" onClick={() => setIsMenuOpen(false)}>
+          <div className="conversations-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="menu-header">
+              <h3>💬 Your Conversations</h3>
+              <button className="menu-close" onClick={() => setIsMenuOpen(false)}>×</button>
+            </div>
+            
+            <div className="menu-actions">
+              <button className="new-chat-btn" onClick={startNewConversation}>
+                ➕ Start New Chat
+              </button>
+            </div>
+
+            <div className="conversations-list">
+              {conversations.length === 0 && (
+                <p className="no-conversations">No previous conversations found. Start chatting to create your first conversation!</p>
+              )}
+              
+              {conversations.map((conv) => (
+                <div 
+                  key={conv.id} 
+                  className="conversation-item"
+                  onClick={() => {
+                    setConversationId(conv.id)
+                    setIsMenuOpen(false)
+                    // Load conversation messages here
+                  }}
+                >
+                  <div className="conv-preview">
+                    <span className="conv-date">
+                      {new Date(conv.created_at).toLocaleDateString()}
+                    </span>
+                    <span className="conv-time">
+                      {new Date(conv.last_message_at || conv.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
+                  <div className="conv-snippet">
+                    Chat from {new Date(conv.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
