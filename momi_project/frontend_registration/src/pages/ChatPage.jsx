@@ -5,6 +5,14 @@ import toast from 'react-hot-toast'
 import axios from 'axios'
 
 const ChatPage = ({ user, userProfile }) => {
+  console.log('ChatPage rendering with:', { user: user?.email, userProfile: userProfile?.first_name });
+  
+  // Early return for debugging
+  if (!user) {
+    console.log('ChatPage: No user provided');
+    return <div>No user found</div>;
+  }
+  
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const navigate = useNavigate()
