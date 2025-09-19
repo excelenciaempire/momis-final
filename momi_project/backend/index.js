@@ -1024,46 +1024,82 @@ adminRouter.get('/users/registered', async (req, res) => {
 // Get all user profiles with complete registration data
 adminRouter.get('/users/profiles', async (req, res) => {
     try {
-        const { data: profiles, error: profilesError } = await supabase
-            .from('user_profiles')
-            .select(`
-                id,
-                auth_user_id,
-                email,
-                first_name,
-                last_name,
-                family_roles,
-                children_count,
-                children_ages,
-                main_concerns,
-                main_concerns_other,
-                dietary_preferences,
-                dietary_preferences_other,
-                personalized_support,
-                registration_metadata,
-                created_at
-            `)
+        // Get all users from the users table (which includes all registered users)
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('*')
             .order('created_at', { ascending: false });
 
-        if (profilesError) throw profilesError;
+        if (usersError) throw usersError;
 
-        // Enrich with auth data
-        const enrichedProfiles = await Promise.all(
-            profiles.map(async (profile) => {
+        // Get all user profiles for additional data
+        const { data: profiles, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select('*');
+
+        if (profilesError) console.warn('Error fetching profiles:', profilesError);
+
+        // Create a map of profiles by auth_user_id for quick lookup
+        const profilesMap = {};
+        if (profiles) {
+            profiles.forEach(profile => {
+                profilesMap[profile.auth_user_id] = profile;
+            });
+        }
+
+        // Combine users with their profiles and enrich with auth data
+        const enrichedUsers = await Promise.all(
+            users.map(async (user) => {
+                const profile = profilesMap[user.id] || {};
+                
                 try {
-                    const { data: authUser } = await supabase.auth.admin.getUserById(profile.auth_user_id);
+                    const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
                     return {
-                        ...profile,
+                        auth_user_id: user.id,
+                        email: user.email,
+                        // Use profile data if available, otherwise fall back to users table
+                        first_name: profile.first_name || user.first_name,
+                        last_name: profile.last_name || user.last_name,
+                        family_roles: profile.family_roles || user.family_roles,
+                        children_count: profile.children_count || user.children_count,
+                        children_ages: profile.children_ages || user.children_ages,
+                        main_concerns: profile.main_concerns || user.main_concerns,
+                        main_concerns_other: profile.main_concerns_other || user.main_concerns_other,
+                        dietary_preferences: profile.dietary_preferences || user.dietary_preferences,
+                        dietary_preferences_other: profile.dietary_preferences_other || user.dietary_preferences_other,
+                        personalized_support: profile.personalized_support,
+                        registration_metadata: profile.registration_metadata,
+                        created_at: user.created_at,
+                        // Auth data
                         last_sign_in_at: authUser?.user?.last_sign_in_at,
-                        email_confirmed_at: authUser?.user?.email_confirmed_at
+                        email_confirmed_at: authUser?.user?.email_confirmed_at,
+                        // Profile status
+                        has_complete_profile: !!profile.id
                     };
                 } catch (authError) {
-                    return profile; // Return profile without auth data if error
+                    console.error(`Error fetching auth data for user ${user.id}:`, authError);
+                    return {
+                        auth_user_id: user.id,
+                        email: user.email,
+                        first_name: profile.first_name || user.first_name,
+                        last_name: profile.last_name || user.last_name,
+                        family_roles: profile.family_roles || user.family_roles,
+                        children_count: profile.children_count || user.children_count,
+                        children_ages: profile.children_ages || user.children_ages,
+                        main_concerns: profile.main_concerns || user.main_concerns,
+                        main_concerns_other: profile.main_concerns_other || user.main_concerns_other,
+                        dietary_preferences: profile.dietary_preferences || user.dietary_preferences,
+                        dietary_preferences_other: profile.dietary_preferences_other || user.dietary_preferences_other,
+                        personalized_support: profile.personalized_support,
+                        registration_metadata: profile.registration_metadata,
+                        created_at: user.created_at,
+                        has_complete_profile: !!profile.id
+                    };
                 }
             })
         );
 
-        res.json(enrichedProfiles);
+        res.json(enrichedUsers);
     } catch (error) {
         console.error('Error fetching user profiles:', error);
         res.status(500).json({ error: 'Failed to fetch user profiles', details: error.message });
@@ -1609,37 +1645,7 @@ app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, 
     }
 });
 
-// --- Speech-to-Text Route ---
-app.post('/api/chat/speech-to-text', authUser, audioUpload.single('audio'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No audio file provided.' });
-    }
-    try {
-        // req.file.path is where multer saved the audio file
-        const transcription = await openai.audio.transcriptions.create({
-            model: "whisper-1",
-            file: fs.createReadStream(req.file.path),
-            language: "en" // Specify English language
-        });
-
-        // Clean up the temporarily saved audio file
-        fs.unlink(req.file.path, (err) => {
-            if (err) console.error("Error deleting temporary audio file:", err);
-        });
-
-        res.json({ transcript: transcription.text });
-
-    } catch (error) {
-        console.error('Error with OpenAI speech-to-text:', error);
-        // Clean up file even on error
-        if (req.file && req.file.path) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) console.error("Error deleting temporary audio file after error:", err);
-            });
-        }
-        res.status(500).json({ error: 'Speech-to-text transcription failed', details: error.message });
-    }
-});
+// Speech-to-text is handled by routes/chat.js
 
 // --- Guest User Routes ---
 app.post('/api/guest/session', async (req, res) => {

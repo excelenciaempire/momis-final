@@ -598,14 +598,14 @@ router.post('/speech-to-text', authUser, upload.single('audio'), async (req, res
                 file: fs.createReadStream(tempFilePath),
                 model: 'whisper-1',
                 language: 'es', // Spanish
-                response_format: 'text'
+                response_format: 'json'
             });
 
             // Clean up temporary file
             fs.unlinkSync(tempFilePath);
 
             res.json({ 
-                transcript: transcription,
+                transcript: transcription.text,
                 message: 'Audio transcribed successfully'
             });
 
