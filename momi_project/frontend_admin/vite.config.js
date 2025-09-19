@@ -9,6 +9,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5000,
     strictPort: true,
+    allowedHosts: ['.replit.dev'], // Allow requests from any replit subdomain
     proxy: {
       '/api': {
         target: 'http://localhost:3001', // Your backend server address

@@ -19,153 +19,75 @@ function App() {
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [authChecked, setAuthChecked] = useState(false)
+  const [profileLoaded, setProfileLoaded] = useState(false) // Track profile loading separately
 
   useEffect(() => {
-    // Check initial session quickly
-    checkUserSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Set user immediately for instant redirect
-        setUser(session.user)
-        setLoading(false)
-        setAuthChecked(true)
-
-        // Load profile asynchronously in background (don't wait for it)
-        loadUserProfile(session.user)
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUserProfile(null)
-        setLoading(false)
-        setAuthChecked(true)
+    const checkUserSession = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          await loadUserProfile(currentUser);
+        }
+      } catch (error) {
+        console.error('Error checking user session:', error);
+      } finally {
+        setLoading(false);
       }
-    })
+    };
+
+    checkUserSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      const currentUser = session?.user;
+      setUser(currentUser);
+      if (currentUser) {
+        await loadUserProfile(currentUser);
+      } else {
+        setUserProfile(null);
+        setProfileLoaded(true);
+      }
+      setLoading(false);
+    });
 
     return () => {
-      subscription?.unsubscribe()
-    }
-  }, [])
-
-  const checkUserSession = async () => {
-    try {
-      // Quick timeout for faster initial load
-      const userPromise = getCurrentUser()
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Session check timeout')), 2000)
-      )
-
-      const currentUser = await Promise.race([userPromise, timeoutPromise])
-
-      if (currentUser) {
-        setUser(currentUser)
-        setLoading(false)
-        setAuthChecked(true)
-
-        // Load profile immediately (not asynchronously)
-        await loadUserProfile(currentUser)
-      } else {
-        setLoading(false)
-        setAuthChecked(true)
-      }
-    } catch (error) {
-      console.error('Error checking user session:', error)
-      // If session check fails/times out, assume no user
-      setUser(null)
-      setUserProfile(null)
-      setLoading(false)
-      setAuthChecked(true)
-    }
-  }
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   const loadUserProfile = async (authUser) => {
+    setProfileLoaded(false);
     try {
-      // Add timeout to profile loading too
-      const profilePromise = getUserProfile(authUser.id)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile load timeout')), 3000)
-      )
-
-      const profile = await Promise.race([profilePromise, timeoutPromise])
-      setUserProfile(profile)
+      const profile = await getUserProfile(authUser.id);
+      setUserProfile(profile);
     } catch (error) {
-      console.error('Error loading user profile:', error)
-      // Create a basic profile if loading fails
+      console.error('Error loading user profile:', error);
+      // Fallback profile if loading fails
       setUserProfile({
         auth_user_id: authUser.id,
         email: authUser.email,
         first_name: authUser.user_metadata?.first_name || 'User',
-        last_name: authUser.user_metadata?.last_name || '',
-        family_roles: [],
-        children_count: 0,
-        main_concerns: [],
-        dietary_preferences: [],
-        personalized_support: false
-      })
+      });
+    } finally {
+      setProfileLoaded(true);
     }
-  }
+  };
 
-  const handleRegistrationSuccess = async (authUser, profileData) => {
-    console.log('Registration successful:', authUser.email)
-    setUser(authUser)
-    setUserProfile(profileData)
-    setLoading(false)
-    setAuthChecked(true)
-  }
+  const handleAuthSuccess = (authUser, profileData) => {
+    setUser(authUser);
+    setUserProfile(profileData);
+    setProfileLoaded(true);
+    setLoading(false);
+  };
 
-  const handleLoginSuccess = async (authUser, profileData) => {
-    console.log('Login successful:', authUser.email)
-    setUser(authUser)
-    setUserProfile(profileData || {
-      auth_user_id: authUser.id,
-      email: authUser.email,
-      first_name: authUser.user_metadata?.first_name || 'User',
-      last_name: authUser.user_metadata?.last_name || '',
-      family_roles: [],
-      children_count: 0,
-      main_concerns: [],
-      dietary_preferences: [],
-      personalized_support: false
-    })
-    // Immediately stop loading and mark auth as checked
-    setLoading(false)
-    setAuthChecked(true)
-  }
-
-  // Quick auth check - minimal loading time
-  if (!authChecked) {
+  if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8f4ff 100%)'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <img
-            src="/momi-icon-2.png"
-            alt="MOMi"
-            style={{
-              width: '40px',
-              marginBottom: '12px',
-              opacity: '0.8'
-            }}
-          />
-          <div style={{
-            color: '#6B46C1',
-            fontSize: '12px',
-            fontWeight: '400',
-            opacity: '0.7'
-          }}>
-            Loading...
-          </div>
-        </div>
+      <div className="loading-container">
+        <img src="/momi-icon-2.png" alt="MOMi Loading" className="loading-icon" />
+        <p>Loading MOMi...</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -215,7 +137,7 @@ function App() {
               user ? (
                 <Navigate to="/chat" replace />
               ) : (
-                <RegistrationPage onRegistrationSuccess={handleRegistrationSuccess} />
+                <RegistrationPage onRegistrationSuccess={handleAuthSuccess} />
               )
             }
           />
@@ -226,7 +148,7 @@ function App() {
               user ? (
                 <Navigate to="/chat" replace />
               ) : (
-                <LoginPage onLoginSuccess={handleLoginSuccess} />
+                <LoginPage onLoginSuccess={handleAuthSuccess} />
               )
             }
           />
@@ -238,18 +160,13 @@ function App() {
           <Route
             path="/chat"
             element={
-              user ? (
-                <ChatPage user={user} userProfile={userProfile || {
-                  auth_user_id: user.id,
-                  email: user.email,
-                  first_name: user.user_metadata?.first_name || 'User',
-                  last_name: user.user_metadata?.last_name || '',
-                  family_roles: [],
-                  children_count: 0,
-                  main_concerns: [],
-                  dietary_preferences: [],
-                  personalized_support: false
-                }} />
+              user && profileLoaded ? (
+                <ChatPage user={user} userProfile={userProfile} />
+              ) : user && !profileLoaded ? (
+                <div className="loading-container">
+                  <img src="/momi-icon-2.png" alt="MOMi Loading" className="loading-icon" />
+                  <p>Loading Profile...</p>
+                </div>
               ) : (
                 <Navigate to="/login" replace />
               )
