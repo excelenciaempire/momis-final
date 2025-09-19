@@ -124,12 +124,22 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
-app.get( /^\/admin\/.*/ , (req, res) => { 
+// Handle admin SPA routes (but not assets or static files)
+app.get('/admin/*', (req, res, next) => {
+    // Skip assets, API routes, and files with extensions
+    if (req.path.startsWith('/admin/assets/') || 
+        req.path.startsWith('/admin/api/') ||
+        path.extname(req.path)) {
+        return next();
+    }
     console.log('Serving admin index.html for admin route:', req.path);
     res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
 // Static file serving (AFTER specific routes)
+// Serve Admin Panel static assets FIRST (before admin routes)
+app.use('/admin', express.static(adminDistPath));
+
 // Serve Chat Widget static assets
 app.use('/widget', express.static(widgetDistPath));
 
@@ -1551,8 +1561,7 @@ adminRouter.post('/dashboard/stats', async (req, res) => {
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
-// Serve Admin Panel static assets ONLY under /admin path (AFTER API routes)
-app.use('/admin', express.static(adminDistPath));
+// Admin static assets are served above (before routes)
 
 // --- Image Upload Route (Protected) ---
 app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, res) => {
