@@ -30,11 +30,19 @@ const ChatPage = ({ user, userProfile }) => {
 
   useEffect(() => {
     initializeChat()
-  }, [])
+  }, [user?.id]) // Only reinitialize when user changes
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Save conversation state to localStorage whenever it changes
+  useEffect(() => {
+    if (conversationId && messages.length > 0) {
+      localStorage.setItem('currentConversationId', conversationId);
+      localStorage.setItem('currentMessages', JSON.stringify(messages));
+    }
+  }, [conversationId, messages])
 
   useEffect(() => {
     const handleOnline = () => {
@@ -62,13 +70,38 @@ const ChatPage = ({ user, userProfile }) => {
 
   const initializeChat = async () => {
     try {
+      // Don't reinitialize if we already have messages (preserve current conversation)
+      if (messages.length > 0) {
+        console.log('Chat already initialized, preserving current conversation');
+        return;
+      }
+
+      // Check if there's a saved conversation in localStorage
+      const savedConversationId = localStorage.getItem('currentConversationId');
+      const savedMessages = localStorage.getItem('currentMessages');
+      
+      if (savedConversationId && savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages);
+          console.log('Restoring saved conversation:', savedConversationId);
+          setConversationId(savedConversationId);
+          setMessages(parsedMessages);
+          return;
+        } catch (error) {
+          console.warn('Failed to restore saved conversation:', error);
+          // Clear corrupted data
+          localStorage.removeItem('currentConversationId');
+          localStorage.removeItem('currentMessages');
+        }
+      }
+      
       // Get welcome message with safe fallbacks
       const userName = userProfile?.first_name || 
                       user?.user_metadata?.first_name || 
                       (user?.email ? user.email.split('@')[0] : null) || 
                       'there'
       
-      console.log('Initializing chat for user:', userName);
+      console.log('Initializing new chat for user:', userName);
       
       const welcomeMessage = {
         id: Date.now(),
@@ -174,7 +207,7 @@ const ChatPage = ({ user, userProfile }) => {
         formData.append('message', messageText || '')
         formData.append('conversationId', conversationId || '')
 
-        const uploadResponse = await axios.post('/api/chat/upload-image', formData, {
+        const uploadResponse = await axios.post('/api/chat/upload', formData, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
@@ -230,9 +263,16 @@ const ChatPage = ({ user, userProfile }) => {
   }
 
   const startNewConversation = () => {
+    // Clear current conversation state
     setMessages([])
     setConversationId(null)
     setIsMenuOpen(false)
+    
+    // Clear saved state from localStorage
+    localStorage.removeItem('currentConversationId');
+    localStorage.removeItem('currentMessages');
+    
+    // Initialize new chat
     initializeChat()
   }
 
@@ -262,6 +302,11 @@ const ChatPage = ({ user, userProfile }) => {
       setMessages(transformedMessages)
       setConversationId(convId)
       setIsMenuOpen(false)
+      
+      // Update localStorage with loaded conversation
+      localStorage.setItem('currentConversationId', convId);
+      localStorage.setItem('currentMessages', JSON.stringify(transformedMessages));
+      
       toast.success('Conversation loaded successfully')
     } catch (error) {
       console.error('Error loading conversation:', error)

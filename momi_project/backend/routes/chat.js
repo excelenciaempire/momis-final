@@ -533,7 +533,7 @@ router.post('/quiz/answer', authUser, answerQuiz);
 router.post('/quiz/status', authUser, getQuizStatus);
 
 // Upload image endpoint
-router.post('/upload-image', authUser, upload.single('image'), async (req, res) => {
+router.post('/upload', authUser, upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No image file provided' });
@@ -544,7 +544,7 @@ router.post('/upload-image', authUser, upload.single('image'), async (req, res) 
         
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
-            .from('chat-images')
+            .from('momi-uploads')
             .upload(fileName, req.file.buffer, {
                 contentType: req.file.mimetype,
                 cacheControl: '3600',
@@ -558,7 +558,7 @@ router.post('/upload-image', authUser, upload.single('image'), async (req, res) 
 
         // Get public URL
         const { data: publicUrlData } = supabase.storage
-            .from('chat-images')
+            .from('momi-uploads')
             .getPublicUrl(fileName);
 
         res.json({ 
