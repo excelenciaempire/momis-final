@@ -447,7 +447,8 @@ router.get('/conversations', authUser, async (req, res) => {
             .select(`
                 id,
                 created_at,
-                summary
+                last_message_at,
+                metadata
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });

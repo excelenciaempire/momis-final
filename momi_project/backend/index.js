@@ -1601,7 +1601,7 @@ app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, 
 });
 
 // --- Speech-to-Text Route ---
-app.post('/api/chat/speech-to-text', audioUpload.single('audio'), async (req, res) => {
+app.post('/api/chat/speech-to-text', authUser, audioUpload.single('audio'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No audio file provided.' });
     }

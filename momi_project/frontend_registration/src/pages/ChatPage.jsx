@@ -272,8 +272,19 @@ const ChatPage = ({ user, userProfile }) => {
     localStorage.removeItem('currentConversationId');
     localStorage.removeItem('currentMessages');
     
-    // Initialize new chat
-    initializeChat()
+    // Force initialize new chat with welcome message
+    const userName = userProfile?.first_name || 
+                    user?.user_metadata?.first_name || 
+                    (user?.email ? user.email.split('@')[0] : null) || 
+                    'there'
+    
+    const welcomeMessage = {
+      id: Date.now(),
+      sender_type: 'momi',
+      content: `Hi ${userName}! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
+      timestamp: new Date().toISOString()
+    }
+    setMessages([welcomeMessage])
   }
 
   const loadConversation = async (convId) => {
