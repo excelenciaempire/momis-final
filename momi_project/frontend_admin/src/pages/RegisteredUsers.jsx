@@ -131,14 +131,48 @@ const RegisteredUsers = () => {
               
               <div className="profile-section">
                 <h3>👨‍👩‍👧‍👦 Family Information</h3>
-                <p><strong>Family Roles:</strong> {selectedUser.family_roles?.length > 0 ? selectedUser.family_roles.join(', ') : 'Not specified'}</p>
+                <p><strong>Family Roles:</strong> {selectedUser.family_roles?.length > 0 ? 
+                  selectedUser.family_roles.map(role => {
+                    switch(role) {
+                      case 'hoping_to_become_mother': return 'Hoping to become a mother';
+                      case 'currently_pregnant': return 'Currently pregnant';
+                      case 'mom_young_children': return 'Mom of young children (0-5)';
+                      case 'mom_school_age': return 'Mom of school-age children (6-12)';
+                      case 'mom_teens': return 'Mom of teens (13-18)';
+                      case 'wise_woman': return 'Wise woman helping raise children';
+                      default: return role;
+                    }
+                  }).join(', ') : 'Not specified'}</p>
                 <p><strong>Children Count:</strong> {selectedUser.children_count || 0}</p>
-                <p><strong>Children Ages:</strong> {selectedUser.children_ages?.length > 0 ? selectedUser.children_ages.join(', ') : 'Not specified'}</p>
+                <p><strong>Children Ages:</strong> {selectedUser.children_ages?.length > 0 ? 
+                  selectedUser.children_ages.map(age => {
+                    switch(age) {
+                      case '0-2': return '0-2 years (Infant/Toddler)';
+                      case '3-5': return '3-5 years (Preschool)';
+                      case '6-12': return '6-12 years (School-age)';
+                      case '13-18': return '13-18 years (Teen)';
+                      case '18+': return '18+ years (Young Adult)';
+                      case 'expecting': return 'Expecting a child';
+                      default: return age;
+                    }
+                  }).join(', ') : 'Not specified'}</p>
               </div>
               
               <div className="profile-section">
                 <h3>🎯 Wellness Goals</h3>
-                <p><strong>Main Concerns:</strong> {selectedUser.main_concerns?.length > 0 ? selectedUser.main_concerns.join(', ') : 'Not specified'}</p>
+                <p><strong>Main Concerns:</strong> {selectedUser.main_concerns?.length > 0 ? 
+                  selectedUser.main_concerns.map(concern => {
+                    switch(concern) {
+                      case 'food': return 'Food: Nourishment and healing';
+                      case 'resilience': return 'Resilience: Stress, sleep, nervous system support';
+                      case 'movement': return 'Movement: Physical activity and energy';
+                      case 'community': return 'Community: Relationships and support';
+                      case 'spiritual': return 'Spiritual: Purpose and emotional healing';
+                      case 'environment': return 'Environment: Detoxifying home';
+                      case 'abundance': return 'Abundance: Financial health and resources';
+                      default: return concern;
+                    }
+                  }).join(', ') : 'Not specified'}</p>
                 {selectedUser.main_concerns_other && (
                   <p><strong>Other Concerns:</strong> {selectedUser.main_concerns_other}</p>
                 )}
@@ -146,7 +180,19 @@ const RegisteredUsers = () => {
               
               <div className="profile-section">
                 <h3>🍎 Dietary Preferences</h3>
-                <p><strong>Preferences:</strong> {selectedUser.dietary_preferences?.length > 0 ? selectedUser.dietary_preferences.join(', ') : 'Not specified'}</p>
+                <p><strong>Preferences:</strong> {selectedUser.dietary_preferences?.length > 0 ? 
+                  selectedUser.dietary_preferences.map(pref => {
+                    switch(pref) {
+                      case 'gluten_free': return 'Gluten-free';
+                      case 'dairy_free': return 'Dairy-free';
+                      case 'nut_free': return 'Nut-free';
+                      case 'soy_free': return 'Soy-free';
+                      case 'vegetarian': return 'Vegetarian';
+                      case 'vegan': return 'Vegan';
+                      case 'no_preference': return 'No specific dietary preferences';
+                      default: return pref;
+                    }
+                  }).join(', ') : 'Not specified'}</p>
                 {selectedUser.dietary_preferences_other && (
                   <p><strong>Other Preferences:</strong> {selectedUser.dietary_preferences_other}</p>
                 )}
