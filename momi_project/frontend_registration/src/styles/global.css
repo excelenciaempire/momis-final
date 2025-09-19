@@ -405,10 +405,10 @@ a:hover {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 20px;
-  height: 20px; /* Fixed height to prevent layout shift */
+  min-height: 24px;
   transition: all 0.2s ease;
   white-space: nowrap; /* Prevent text wrapping */
+  text-align: center;
 }
 
 /* Loading state for buttons */
@@ -427,6 +427,8 @@ a:hover {
   flex-shrink: 0;
   width: 18px; /* Fixed width */
   height: 18px; /* Fixed height */
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Prevent button size changes during loading */
