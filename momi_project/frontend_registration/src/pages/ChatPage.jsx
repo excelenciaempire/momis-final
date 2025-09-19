@@ -13,6 +13,17 @@ const ChatPage = ({ user, userProfile }) => {
     return <div>No user found</div>;
   }
   
+  // Temporary simple return to test if the error is in the component logic
+  return (
+    <div style={{ padding: '20px', textAlign: 'center' }}>
+      <h2>🤖 MOMi Chat</h2>
+      <p>Hello {userProfile?.first_name || user?.email?.split('@')[0] || 'User'}!</p>
+      <p>Chat interface loading...</p>
+    </div>
+  );
+  
+  // Comment out the complex logic temporarily
+  /*
   try {
   
   const [messages, setMessages] = useState([])
@@ -929,6 +940,7 @@ const ChatPage = ({ user, userProfile }) => {
       </div>
     );
   }
+  */
 }
 
 export default ChatPage
