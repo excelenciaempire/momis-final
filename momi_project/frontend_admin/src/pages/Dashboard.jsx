@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,6 +12,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import apiClient from '../apiClient';
+import { supabase } from '../supabaseClient';
 import './Dashboard.css';
 
 ChartJS.register(
@@ -30,49 +31,128 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const statsResponse = await apiClient.post('/admin/dashboard/stats', {});
+      setStats(statsResponse.data);
+      setLastUpdated(new Date());
+      console.log('Dashboard stats updated:', statsResponse.data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+      setError(err.response?.data?.error || 'Failed to fetch dashboard data.');
+    }
+  }, []);
+
+  const fetchChartData = useCallback(async () => {
+    try {
+      const messagesResponse = await apiClient.get('/admin/analytics/messages-over-time?period=7d');
+      setChartData({
+        labels: messagesResponse.data.map(item => new Date(item.date).toLocaleDateString()),
+        datasets: [{
+          label: 'Messages per Day',
+          data: messagesResponse.data.map(item => item.count),
+          borderColor: '#913D9A',
+          backgroundColor: 'rgba(145, 61, 154, 0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      });
+    } catch (chartError) {
+      console.log('Chart data not available:', chartError);
+    }
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setError('');
+      setLoading(true);
+      await Promise.all([fetchStats(), fetchChartData()]);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to fetch dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchStats, fetchChartData]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setError('');
-        setLoading(true);
-        
-        // Fetch dashboard stats
-        const statsResponse = await apiClient.post('/admin/dashboard/stats', {});
-        setStats(statsResponse.data);
-
-        // Fetch messages over time for chart
-        try {
-          const messagesResponse = await apiClient.get('/admin/analytics/messages-over-time?period=7d');
-          const messagesData = messagesResponse.data.map(item => ({
-            x: item.date,
-            y: item.count
-          }));
-
-          setChartData({
-            labels: messagesResponse.data.map(item => new Date(item.date).toLocaleDateString()),
-            datasets: [{
-              label: 'Messages per Day',
-              data: messagesResponse.data.map(item => item.count),
-              borderColor: '#913D9A',
-              backgroundColor: 'rgba(145, 61, 154, 0.1)',
-              fill: true,
-              tension: 0.4
-            }]
-          });
-        } catch (chartError) {
-          console.log('Chart data not available:', chartError);
-        }
-
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to fetch dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('Setting up real-time subscriptions for dashboard...');
+
+    // Subscribe to user profile changes
+    const userProfilesSubscription = supabase
+      .channel('user_profiles_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_profiles' },
+        (payload) => {
+          console.log('User profiles changed:', payload);
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to auth.users changes (new registrations)
+    const authUsersSubscription = supabase
+      .channel('auth_users_changes')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'auth', table: 'users' },
+        (payload) => {
+          console.log('New user registered:', payload);
+          // Refresh stats immediately when new user registers
+          setTimeout(() => {
+            fetchStats();
+          }, 1000); // Small delay to allow trigger to complete
+        }
+      )
+      .subscribe();
+
+    // Subscribe to conversations changes
+    const conversationsSubscription = supabase
+      .channel('conversations_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        (payload) => {
+          console.log('Conversations changed:', payload);
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to messages changes
+    const messagesSubscription = supabase
+      .channel('messages_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload) => {
+          console.log('Messages changed:', payload);
+          fetchStats();
+          fetchChartData();
+        }
+      )
+      .subscribe();
+
+    // Auto-refresh every 30 seconds as fallback
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing dashboard stats...');
+      fetchStats();
+    }, 30000);
+
+    return () => {
+      console.log('Cleaning up dashboard subscriptions...');
+      userProfilesSubscription.unsubscribe();
+      authUsersSubscription.unsubscribe();
+      conversationsSubscription.unsubscribe();
+      messagesSubscription.unsubscribe();
+      clearInterval(intervalId);
+    };
+  }, [fetchStats, fetchChartData]);
 
   const userDistributionData = stats ? {
     labels: ['Active Users', 'Total Users'],
@@ -85,7 +165,18 @@ const Dashboard = () => {
 
   return (
     <div className="analytics-page-container">
-      <h1 className="page-header">📊 MOMi Analytics Dashboard</h1>
+      <div className="dashboard-header">
+        <h1 className="page-header">📊 MOMi Analytics Dashboard</h1>
+        <div className="dashboard-status">
+          <div className="realtime-indicator">
+            <span className="status-dot active"></span>
+            <span>Live Updates Active</span>
+          </div>
+          <div className="last-updated">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
 
       {loading && <div className="loading-message card"><p>Loading dashboard...</p></div>}
       {error && <div className="error-message card">{error}</div>}

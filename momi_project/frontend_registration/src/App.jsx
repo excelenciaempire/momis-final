@@ -10,6 +10,7 @@ import ChatPage from './pages/ChatPage'
 import TermsPage from './pages/TermsPage'
 import LandingPage from './pages/LandingPage'
 import EmailConfirmationPage from './pages/EmailConfirmationPage'
+import EmailConfirmationPendingPage from './pages/EmailConfirmationPendingPage'
 
 // Styles
 import './styles/global.css'
@@ -176,6 +177,7 @@ function App() {
 
           <Route path="/terms" element={<TermsPage />} />
           {/* <Route path="/email-confirmation" element={<EmailConfirmationPage />} /> */}
+          <Route path="/confirm-email" element={<EmailConfirmationPendingPage />} />
 
           {/* Protected Routes */}
           <Route

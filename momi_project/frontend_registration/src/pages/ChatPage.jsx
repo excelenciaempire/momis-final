@@ -385,16 +385,44 @@ const ChatPage = ({ user, userProfile }) => {
   const startVoiceRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      
+      // Check supported MIME types and use the best available
+      let mimeType = 'audio/webm;codecs=opus'
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm'
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/mp4'
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/wav'
+          }
+        }
+      }
+      
+      const recorder = new MediaRecorder(stream, { mimeType })
       const audioChunks = []
 
       recorder.ondataavailable = (event) => {
-        audioChunks.push(event.data)
+        if (event.data.size > 0) {
+          audioChunks.push(event.data)
+        }
       }
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-        await transcribeAudio(audioBlob)
+        if (audioChunks.length > 0) {
+          const audioBlob = new Blob(audioChunks, { type: mimeType })
+          await transcribeAudio(audioBlob)
+        } else {
+          toast.error('No audio data recorded. Please try again.')
+          setIsTranscribing(false)
+        }
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      recorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event.error)
+        toast.error('Recording error. Please try again.')
+        setIsRecording(false)
+        setIsTranscribing(false)
         stream.getTracks().forEach(track => track.stop())
       }
 
@@ -404,7 +432,13 @@ const ChatPage = ({ user, userProfile }) => {
       toast.success('Recording started! Tap again to stop.')
     } catch (error) {
       console.error('Error starting recording:', error)
-      toast.error('Unable to access microphone. Please check permissions.')
+      if (error.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow microphone permissions and try again.')
+      } else if (error.name === 'NotFoundError') {
+        toast.error('No microphone found. Please check your audio devices.')
+      } else {
+        toast.error('Unable to access microphone. Please check permissions and try again.')
+      }
     }
   }
 
@@ -419,29 +453,76 @@ const ChatPage = ({ user, userProfile }) => {
 
   const transcribeAudio = async (audioBlob) => {
     try {
+      // Determine file extension based on MIME type
+      let fileExtension = 'webm'
+      if (audioBlob.type.includes('mp4')) {
+        fileExtension = 'mp4'
+      } else if (audioBlob.type.includes('wav')) {
+        fileExtension = 'wav'
+      } else if (audioBlob.type.includes('ogg')) {
+        fileExtension = 'ogg'
+      }
+
       const formData = new FormData()
-      formData.append('audio', audioBlob, 'voice-message.webm')
+      formData.append('audio', audioBlob, `voice-message.${fileExtension}`)
       
       const token = (await supabase.auth.getSession()).data.session?.access_token
+      
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.')
+      }
+
+      console.log('Sending audio for transcription:', {
+        size: audioBlob.size,
+        type: audioBlob.type,
+        filename: `voice-message.${fileExtension}`
+      })
+      
       const response = await axios.post('/api/chat/speech-to-text', formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 30000
+        timeout: 45000 // Increased timeout for audio processing
       })
 
       const transcript = response.data.transcript
       if (transcript?.trim()) {
+        console.log('Transcription successful:', transcript)
         // Send the transcribed message
         await sendMessage(transcript, selectedImage)
         toast.success('Voice message sent!')
       } else {
-        toast.error('Could not understand the audio. Please try again.')
+        console.warn('Empty transcript received')
+        toast.error('Could not understand the audio. Please speak clearly and try again.')
       }
     } catch (error) {
       console.error('Error transcribing audio:', error)
-      toast.error('Failed to process voice message. Please try again.')
+      
+      if (error.response) {
+        // Server responded with error
+        const status = error.response.status
+        const message = error.response.data?.error || error.response.data?.details || 'Unknown server error'
+        
+        if (status === 401) {
+          toast.error('Session expired. Please log in again.')
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+        } else if (status === 413) {
+          toast.error('Audio file too large. Please record a shorter message.')
+        } else if (status === 400) {
+          toast.error('Invalid audio format. Please try recording again.')
+        } else {
+          toast.error(`Server error: ${message}`)
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Request timed out. Please try with a shorter recording.')
+      } else if (error.message.includes('Authentication required')) {
+        toast.error(error.message)
+      } else {
+        toast.error('Failed to process voice message. Please check your connection and try again.')
+      }
     } finally {
       setIsTranscribing(false)
     }

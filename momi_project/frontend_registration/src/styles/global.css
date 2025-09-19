@@ -367,12 +367,14 @@ a:hover {
   font-size: var(--font-size-lg);
   min-height: 52px;
   max-height: 52px;
+  height: 52px; /* Fixed height to prevent distortion */
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   position: relative;
+  overflow: hidden; /* Prevent content overflow */
 }
 
 .btn-full {
@@ -404,13 +406,16 @@ a:hover {
   justify-content: center;
   width: 100%;
   min-height: 20px;
+  height: 20px; /* Fixed height to prevent layout shift */
   gap: 8px;
   transition: all 0.2s ease;
+  white-space: nowrap; /* Prevent text wrapping */
 }
 
 /* Loading state for buttons */
 .btn.loading {
   position: relative;
+  pointer-events: none; /* Prevent double clicks during loading */
 }
 
 .btn.loading .btn-content {
@@ -421,6 +426,22 @@ a:hover {
 .btn .loading-spinner {
   margin-right: 0;
   flex-shrink: 0;
+  width: 18px; /* Fixed width */
+  height: 18px; /* Fixed height */
+}
+
+/* Prevent button size changes during loading */
+.btn.loading {
+  min-width: 200px; /* Minimum width to prevent shrinking */
+}
+
+/* Smooth transition for loading state */
+.btn:not(.loading) .btn-content {
+  transition: opacity 0.2s ease;
+}
+
+.btn.loading .btn-content {
+  transition: opacity 0.2s ease;
 }
 
 /* Register link styles */

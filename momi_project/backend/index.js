@@ -1597,6 +1597,70 @@ adminRouter.post('/dashboard/stats', async (req, res) => {
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
 
+// Test endpoint to verify new user registration sync
+app.post('/api/test/register-user', async (req, res) => {
+    try {
+        const { email, password, firstName, lastName } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
+        console.log('Creating test user:', { email, firstName, lastName });
+
+        // Create user with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email,
+            password,
+            user_metadata: {
+                first_name: firstName || 'Test',
+                last_name: lastName || 'User'
+            },
+            email_confirm: true // Auto-confirm for testing
+        });
+
+        if (authError) {
+            console.error('Auth error:', authError);
+            return res.status(400).json({ error: authError.message });
+        }
+
+        console.log('User created successfully:', authData.user.id);
+
+        // Wait a moment for trigger to execute
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Check if profile was created
+        const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('auth_user_id', authData.user.id)
+            .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Profile check error:', profileError);
+        }
+
+        // Get updated counts
+        const { data: stats } = await supabase.rpc('get_admin_dashboard_stats');
+
+        res.json({
+            success: true,
+            user: {
+                id: authData.user.id,
+                email: authData.user.email,
+                created_at: authData.user.created_at
+            },
+            profile_created: !!profile,
+            profile: profile,
+            updated_stats: stats
+        });
+
+    } catch (error) {
+        console.error('Test registration error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Admin static assets are served above (before routes)
 
 // --- Image Upload Route (Protected) ---

@@ -65,6 +65,65 @@ const RegisteredUsersPage = () => {
     fetchUsers();
   }, [fetchDashboardStats, fetchUsers]);
 
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('Setting up real-time subscriptions for users page...');
+
+    // Subscribe to user profile changes
+    const userProfilesSubscription = supabase
+      .channel('admin_user_profiles_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'user_profiles' },
+        (payload) => {
+          console.log('User profiles changed:', payload);
+          fetchUsers();
+          fetchDashboardStats();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new user registrations
+    const authUsersSubscription = supabase
+      .channel('admin_auth_users_changes')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'auth', table: 'users' },
+        (payload) => {
+          console.log('New user registered in admin view:', payload);
+          // Refresh users list and stats when new user registers
+          setTimeout(() => {
+            fetchUsers();
+            fetchDashboardStats();
+          }, 1500); // Slightly longer delay to ensure profile is created
+        }
+      )
+      .subscribe();
+
+    // Subscribe to conversations changes
+    const conversationsSubscription = supabase
+      .channel('admin_conversations_changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        (payload) => {
+          console.log('Conversations changed:', payload);
+          fetchDashboardStats();
+          // Refresh conversations if a user is selected
+          if (selectedUser) {
+            handleUserSelect(selectedUser);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up admin users subscriptions...');
+      userProfilesSubscription.unsubscribe();
+      authUsersSubscription.unsubscribe();
+      conversationsSubscription.unsubscribe();
+    };
+  }, [fetchUsers, fetchDashboardStats, selectedUser, handleUserSelect]);
+
   const handleUserSelect = async (user) => {
     setSelectedUser(user);
     setSelectedConversation(null);

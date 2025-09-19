@@ -10,7 +10,9 @@ const router = express.Router();
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
-const upload = multer({ 
+
+// Multer configuration for image uploads
+const uploadImage = multer({ 
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
@@ -20,6 +22,21 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
+// Multer configuration for audio uploads
+const uploadAudio = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 25 * 1024 * 1024 // 25MB limit for audio files
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('audio/') || file.mimetype === 'application/octet-stream') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'), false);
     }
   }
 });
@@ -534,7 +551,7 @@ router.post('/quiz/answer', authUser, answerQuiz);
 router.post('/quiz/status', authUser, getQuizStatus);
 
 // Upload image endpoint
-router.post('/upload', authUser, upload.single('image'), async (req, res) => {
+router.post('/upload', authUser, uploadImage.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No image file provided' });
@@ -574,10 +591,26 @@ router.post('/upload', authUser, upload.single('image'), async (req, res) => {
 });
 
 // Speech to text endpoint
-router.post('/speech-to-text', authUser, upload.single('audio'), async (req, res) => {
+router.post('/speech-to-text', authUser, uploadAudio.single('audio'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No audio file provided' });
+        }
+
+        console.log('Received audio file:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
+
+        // Validate file size (max 25MB)
+        if (req.file.size > 25 * 1024 * 1024) {
+            return res.status(413).json({ error: 'Audio file too large. Maximum size is 25MB.' });
+        }
+
+        // Validate file has content
+        if (req.file.size === 0) {
+            return res.status(400).json({ error: 'Audio file is empty' });
         }
 
         // Create a temporary file for OpenAI Whisper
@@ -586,42 +619,100 @@ router.post('/speech-to-text', authUser, upload.single('audio'), async (req, res
         const os = require('os');
         
         const tempDir = os.tmpdir();
-        const tempFileName = `audio_${Date.now()}.webm`;
+        
+        // Determine file extension from original filename or mimetype
+        let fileExtension = 'webm'; // default
+        if (req.file.originalname) {
+            const ext = path.extname(req.file.originalname).toLowerCase();
+            if (ext) {
+                fileExtension = ext.substring(1); // remove the dot
+            }
+        } else if (req.file.mimetype) {
+            if (req.file.mimetype.includes('mp4')) fileExtension = 'mp4';
+            else if (req.file.mimetype.includes('wav')) fileExtension = 'wav';
+            else if (req.file.mimetype.includes('ogg')) fileExtension = 'ogg';
+            else if (req.file.mimetype.includes('mpeg')) fileExtension = 'mp3';
+        }
+        
+        const tempFileName = `audio_${Date.now()}_${req.user.id}.${fileExtension}`;
         const tempFilePath = path.join(tempDir, tempFileName);
+        
+        console.log('Creating temporary file:', tempFilePath);
         
         // Write buffer to temporary file
         fs.writeFileSync(tempFilePath, req.file.buffer);
         
         try {
             // Use OpenAI Whisper for transcription
+            console.log('Starting transcription with OpenAI Whisper...');
             const transcription = await openai.audio.transcriptions.create({
                 file: fs.createReadStream(tempFilePath),
                 model: 'whisper-1',
-                language: 'en', // English
-                response_format: 'json'
+                language: 'en', // English - can be made dynamic later
+                response_format: 'json',
+                temperature: 0.2 // Lower temperature for more consistent results
+            });
+
+            console.log('Transcription completed:', {
+                text: transcription.text,
+                length: transcription.text?.length || 0
             });
 
             // Clean up temporary file
             fs.unlinkSync(tempFilePath);
 
+            // Validate transcription result
+            if (!transcription.text || transcription.text.trim().length === 0) {
+                return res.status(400).json({ 
+                    error: 'No speech detected in audio',
+                    transcript: '',
+                    message: 'The audio file appears to be silent or unclear. Please try speaking more clearly.'
+                });
+            }
+
             res.json({ 
-                transcript: transcription.text,
+                transcript: transcription.text.trim(),
                 message: 'Audio transcribed successfully'
             });
 
         } catch (transcriptionError) {
+            console.error('OpenAI Whisper transcription error:', transcriptionError);
+            
             // Clean up temporary file on error
             if (fs.existsSync(tempFilePath)) {
                 fs.unlinkSync(tempFilePath);
             }
+            
+            // Handle specific OpenAI errors
+            if (transcriptionError.code === 'insufficient_quota') {
+                return res.status(503).json({ 
+                    error: 'Service temporarily unavailable',
+                    details: 'Speech recognition service quota exceeded. Please try again later.'
+                });
+            } else if (transcriptionError.code === 'invalid_request_error') {
+                return res.status(400).json({ 
+                    error: 'Invalid audio format',
+                    details: 'The audio file format is not supported. Please try recording again.'
+                });
+            }
+            
             throw transcriptionError;
         }
 
     } catch (error) {
         console.error('Speech to text error:', error);
+        
+        // Handle multer errors
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ 
+                error: 'Audio file too large',
+                details: 'Maximum file size is 25MB'
+            });
+        }
+        
         res.status(500).json({ 
             error: 'Failed to transcribe audio', 
-            details: error.message 
+            details: error.message || 'Internal server error during audio processing'
         });
     }
 });

@@ -628,6 +628,150 @@
 }
 
 /* ============================================================================
+   EMAIL CONFIRMATION PENDING PAGE
+   ============================================================================ */
+
+.confirmation-content {
+  text-align: center;
+  padding: var(--spacing-6) 0;
+}
+
+.confirmation-icon {
+  margin-bottom: var(--spacing-6);
+}
+
+.email-icon {
+  font-size: 4rem;
+  display: inline-block;
+  background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-light) 100%);
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirmation-title {
+  color: var(--purple-primary);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-6);
+}
+
+.confirmation-message {
+  max-width: 500px;
+  margin: 0 auto var(--spacing-8);
+}
+
+.confirmation-message > p {
+  color: var(--gray-dark);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--spacing-3);
+}
+
+.email-address {
+  color: var(--purple-primary) !important;
+  font-weight: 600;
+  font-size: var(--font-size-lg) !important;
+  background: var(--white-soft);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--purple-light);
+  margin-bottom: var(--spacing-6) !important;
+}
+
+.instructions {
+  background: var(--white-soft);
+  border: 1px solid var(--purple-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin: var(--spacing-6) 0;
+  text-align: left;
+}
+
+.instructions h3 {
+  color: var(--purple-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--spacing-3);
+  text-align: center;
+}
+
+.instructions ol {
+  list-style: decimal;
+  padding-left: var(--spacing-5);
+  color: var(--gray-dark);
+}
+
+.instructions li {
+  margin-bottom: var(--spacing-2);
+  line-height: 1.5;
+}
+
+.help-section {
+  background: #fff9e6;
+  border: 1px solid #ffc107;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  margin: var(--spacing-6) 0;
+  text-align: left;
+}
+
+.help-text {
+  color: #856404 !important;
+  font-weight: 600 !important;
+  margin-bottom: var(--spacing-3) !important;
+  text-align: center;
+}
+
+.help-list {
+  list-style: disc;
+  padding-left: var(--spacing-5);
+  color: #856404;
+}
+
+.help-list li {
+  margin-bottom: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.confirmation-actions {
+  margin-top: var(--spacing-8);
+}
+
+.secondary-actions {
+  margin-top: var(--spacing-4);
+}
+
+.secondary-link {
+  color: var(--gray-light);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color 0.2s ease;
+}
+
+.secondary-link:hover {
+  color: var(--purple-primary);
+  text-decoration: underline;
+}
+
+.support-link {
+  color: var(--purple-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.support-link:hover {
+  color: var(--magenta-vibrant);
+  text-decoration: underline;
+}
+
+/* ============================================================================
    RESPONSIVE DESIGN
    ============================================================================ */
 
