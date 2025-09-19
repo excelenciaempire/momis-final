@@ -407,7 +407,6 @@ a:hover {
   width: 100%;
   min-height: 20px;
   height: 20px; /* Fixed height to prevent layout shift */
-  gap: 8px;
   transition: all 0.2s ease;
   white-space: nowrap; /* Prevent text wrapping */
 }
@@ -424,7 +423,7 @@ a:hover {
 
 /* Ensure loading spinner doesn't cause layout shift */
 .btn .loading-spinner {
-  margin-right: 0;
+  margin-right: 8px;
   flex-shrink: 0;
   width: 18px; /* Fixed width */
   height: 18px; /* Fixed height */

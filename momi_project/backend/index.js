@@ -1024,13 +1024,15 @@ adminRouter.get('/users/registered', async (req, res) => {
 // Get all user profiles with complete registration data
 adminRouter.get('/users/profiles', async (req, res) => {
     try {
-        // Get all users from the users table (which includes all registered users)
-        const { data: users, error: usersError } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (usersError) throw usersError;
+        // Get all users from auth.users (the actual users table)
+        const { data: authUsersResponse, error: authUsersError } = await supabase.auth.admin.listUsers();
+        
+        if (authUsersError) throw authUsersError;
+        
+        // Filter out deleted users and sort by created_at
+        const users = authUsersResponse.users
+            .filter(user => !user.deleted_at)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         // Get all user profiles for additional data
         const { data: profiles, error: profilesError } = await supabase
@@ -1047,57 +1049,32 @@ adminRouter.get('/users/profiles', async (req, res) => {
             });
         }
 
-        // Combine users with their profiles and enrich with auth data
-        const enrichedUsers = await Promise.all(
-            users.map(async (user) => {
-                const profile = profilesMap[user.id] || {};
-                
-                try {
-                    const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
-                    return {
-                        auth_user_id: user.id,
-                        email: user.email,
-                        // Use profile data if available, otherwise fall back to users table
-                        first_name: profile.first_name || user.first_name,
-                        last_name: profile.last_name || user.last_name,
-                        family_roles: profile.family_roles || user.family_roles,
-                        children_count: profile.children_count || user.children_count,
-                        children_ages: profile.children_ages || user.children_ages,
-                        main_concerns: profile.main_concerns || user.main_concerns,
-                        main_concerns_other: profile.main_concerns_other || user.main_concerns_other,
-                        dietary_preferences: profile.dietary_preferences || user.dietary_preferences,
-                        dietary_preferences_other: profile.dietary_preferences_other || user.dietary_preferences_other,
-                        personalized_support: profile.personalized_support,
-                        registration_metadata: profile.registration_metadata,
-                        created_at: user.created_at,
-                        // Auth data
-                        last_sign_in_at: authUser?.user?.last_sign_in_at,
-                        email_confirmed_at: authUser?.user?.email_confirmed_at,
-                        // Profile status
-                        has_complete_profile: !!profile.id
-                    };
-                } catch (authError) {
-                    console.error(`Error fetching auth data for user ${user.id}:`, authError);
-                    return {
-                        auth_user_id: user.id,
-                        email: user.email,
-                        first_name: profile.first_name || user.first_name,
-                        last_name: profile.last_name || user.last_name,
-                        family_roles: profile.family_roles || user.family_roles,
-                        children_count: profile.children_count || user.children_count,
-                        children_ages: profile.children_ages || user.children_ages,
-                        main_concerns: profile.main_concerns || user.main_concerns,
-                        main_concerns_other: profile.main_concerns_other || user.main_concerns_other,
-                        dietary_preferences: profile.dietary_preferences || user.dietary_preferences,
-                        dietary_preferences_other: profile.dietary_preferences_other || user.dietary_preferences_other,
-                        personalized_support: profile.personalized_support,
-                        registration_metadata: profile.registration_metadata,
-                        created_at: user.created_at,
-                        has_complete_profile: !!profile.id
-                    };
-                }
-            })
-        );
+        // Combine users with their profiles
+        const enrichedUsers = users.map((user) => {
+            const profile = profilesMap[user.id] || {};
+            
+            return {
+                auth_user_id: user.id,
+                email: user.email,
+                // Use profile data if available, otherwise fall back to auth user metadata
+                first_name: profile.first_name || user.user_metadata?.first_name || user.raw_user_meta_data?.first_name,
+                last_name: profile.last_name || user.user_metadata?.last_name || user.raw_user_meta_data?.last_name,
+                family_roles: profile.family_roles,
+                children_count: profile.children_count,
+                        children_ages: profile.children_ages,
+                main_concerns: profile.main_concerns,
+                main_concerns_other: profile.main_concerns_other,
+                dietary_preferences: profile.dietary_preferences,
+                dietary_preferences_other: profile.dietary_preferences_other,
+                personalized_support: profile.personalized_support,
+                registration_metadata: profile.registration_metadata,
+                created_at: user.created_at,
+                // Auth data from the user object
+                last_sign_in_at: user.last_sign_in_at,
+                email_confirmed_at: user.email_confirmed_at,
+                // Profile status
+                has_complete_profile: !!profile.id
+            });
 
         res.json(enrichedUsers);
     } catch (error) {
