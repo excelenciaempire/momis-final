@@ -100,8 +100,9 @@ app.use(cors({
 
 // --- Middleware for serving static frontend files ---
 
-// Serve Registration Frontend (from momi_project/public)
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve Registration Frontend (from momi_project/frontend_registration/dist)
+const registrationDistPath = path.join(__dirname, '../frontend_registration/dist');
+app.use(express.static(registrationDistPath));
 
 // Serve Admin Panel (from momi_project/frontend_admin/dist)
 // All /admin/* routes should serve the admin panel's index.html for client-side routing
@@ -121,21 +122,8 @@ app.use('/widget', express.static(widgetDistPath));
 // });
 
 // Serve Registration Frontend SPA routes
-const publicPath = path.join(__dirname, '../public');
-app.get('/register', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-app.get('/chat', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-app.get('/terms', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-app.get('/email-confirmation', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
+app.get(['/register', '/login', '/chat', '/terms', '/email-confirmation'], (req, res) => {
+    res.sendFile(path.join(registrationDistPath, 'index.html'));
 });
 
 // Initialize Supabase client
@@ -2206,7 +2194,8 @@ app.get('/widget/fullpage', (req, res) => {
 
 // --- Root and Test Routes (keep for basic checks) ---
 app.get('/', (req, res) => {
-    res.send('MOMi Backend is running!');
+    // Serve the main registration/login app's entry point
+    res.sendFile(path.join(__dirname, '../frontend_registration/dist', 'index.html'));
 });
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route is working! Supra client: ' + (supabase ? 'OK' : 'FAIL') + ', OpenAI client: ' + (openai ? 'OK' : 'FAIL'), serviceKeySet: !!supabaseServiceKey });
