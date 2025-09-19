@@ -16,7 +16,7 @@ PORT = "3001"
 
 [deployment]
 deploymentTarget = "cloudrun"
-build = ["sh", "-c", "(cd momi_project/frontend_admin && rm -rf dist node_modules package-lock.json && npm install && npm run build) && (cd momi_project/frontend_widget && npm install && npm run build) && (cd momi_project/backend && npm install)"]
+build = ["sh", "-c", "(cd momi_project/frontend_registration && rm -rf dist node_modules package-lock.json && npm install && npm run build) && (cd momi_project/frontend_admin && rm -rf dist node_modules package-lock.json && npm install && npm run build) && (cd momi_project/frontend_widget && npm install && npm run build) && (cd momi_project/backend && npm install)"]
 run = ["sh", "-c", "cd momi_project && npm start"]
 
 [[ports]]
@@ -75,6 +75,10 @@ task = "shell.exec"
 args = "cd momi_project/frontend_admin && npm run dev"
 waitForPort = 5000
 
+[workflows.workflow.metadata]
+outputType = "webview"
+outputPort = 3001
+
 [[workflows.workflow]]
 name = "test"
 mode = "sequential"
@@ -110,9 +114,6 @@ author = "agent"
 task = "shell.exec"
 args = "cd momi_project/frontend_admin && npm run dev"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [agent]
 expertMode = true

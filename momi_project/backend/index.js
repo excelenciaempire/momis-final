@@ -2195,7 +2195,9 @@ app.get('/widget/fullpage', (req, res) => {
 // --- Root and Test Routes (keep for basic checks) ---
 app.get('/', (req, res) => {
     // Serve the main registration/login app's entry point
-    res.sendFile(path.join(__dirname, '../frontend_registration/dist', 'index.html'));
+    const indexPath = path.join(__dirname, '../frontend_registration/dist', 'index.html');
+    console.log('Serving root route from:', indexPath);
+    res.sendFile(indexPath);
 });
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route is working! Supra client: ' + (supabase ? 'OK' : 'FAIL') + ', OpenAI client: ' + (openai ? 'OK' : 'FAIL'), serviceKeySet: !!supabaseServiceKey });
