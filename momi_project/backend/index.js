@@ -1061,7 +1061,7 @@ adminRouter.get('/users/profiles', async (req, res) => {
                 last_name: profile.last_name || user.user_metadata?.last_name || user.raw_user_meta_data?.last_name,
                 family_roles: profile.family_roles,
                 children_count: profile.children_count,
-                        children_ages: profile.children_ages,
+                children_ages: profile.children_ages,
                 main_concerns: profile.main_concerns,
                 main_concerns_other: profile.main_concerns_other,
                 dietary_preferences: profile.dietary_preferences,
@@ -1074,7 +1074,8 @@ adminRouter.get('/users/profiles', async (req, res) => {
                 email_confirmed_at: user.email_confirmed_at,
                 // Profile status
                 has_complete_profile: !!profile.id
-            });
+            };
+        });
 
         res.json(enrichedUsers);
     } catch (error) {
