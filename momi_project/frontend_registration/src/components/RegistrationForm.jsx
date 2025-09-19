@@ -181,37 +181,52 @@ const RegistrationForm = ({ onSuccess }) => {
         }
       }
 
-      // The user profile will be created automatically by the database trigger
-      // We just need to update it with the registration data after a short delay
-      setTimeout(async () => {
-        try {
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update({
-              family_roles: data.familyRoles,
-              children_count: parseInt(data.childrenCount),
-              children_ages: data.childrenAges,
-              main_concerns: data.mainConcerns.filter(c => c !== 'other'),
-              main_concerns_other: data.mainConcernsOther || null,
-              dietary_preferences: data.dietaryPreferences.filter(d => d !== 'other'),
-              dietary_preferences_other: data.dietaryPreferencesOther || null,
-              personalized_support: data.personalizedSupport,
-              registration_metadata: {
-                registration_date: new Date().toISOString(),
-                registration_source: 'web_form',
-                form_version: '1.0',
-                raw_form_data: data
-              }
-            })
-            .eq('auth_user_id', authData.user.id)
+      // Update the user profile with registration data
+      // The profile should have been created by the trigger, but let's ensure it exists
+      const updateProfileData = async () => {
+        const profileData = {
+          family_roles: data.familyRoles,
+          children_count: parseInt(data.childrenCount),
+          children_ages: data.childrenAges,
+          main_concerns: data.mainConcerns.filter(c => c !== 'other'),
+          main_concerns_other: data.mainConcernsOther || null,
+          dietary_preferences: data.dietaryPreferences.filter(d => d !== 'other'),
+          dietary_preferences_other: data.dietaryPreferencesOther || null,
+          personalized_support: data.personalizedSupport,
+          registration_metadata: {
+            registration_date: new Date().toISOString(),
+            registration_source: 'web_form',
+            form_version: '1.0',
+            raw_form_data: data
+          },
+          updated_at: new Date().toISOString()
+        };
 
-          if (updateError) {
-            console.error('Profile update error:', updateError)
-          }
-        } catch (updateErr) {
-          console.error('Profile update failed:', updateErr)
+        // Try to update the profile, if it doesn't exist, create it
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            auth_user_id: authData.user.id,
+            email: data.email,
+            first_name: data.firstName,
+            last_name: data.lastName,
+            ...profileData
+          })
+
+        if (updateError) {
+          console.error('Profile upsert error:', updateError)
+        } else {
+          console.log('Profile updated successfully with registration data')
         }
-      }, 2000) // Wait 2 seconds for trigger to create basic profile
+      };
+
+      // Try to update immediately, then retry if needed
+      try {
+        await updateProfileData();
+      } catch (err) {
+        console.warn('First attempt failed, retrying in 1 second...', err);
+        setTimeout(updateProfileData, 1000);
+      }
 
       // Save email for confirmation page and redirect
       localStorage.setItem('pendingConfirmationEmail', data.email)
