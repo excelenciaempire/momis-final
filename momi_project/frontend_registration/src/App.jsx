@@ -18,37 +18,37 @@ import './styles/components.css'
 function App() {
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [profileLoaded, setProfileLoaded] = useState(false) // Track profile loading separately
 
   useEffect(() => {
     const checkUserSession = async () => {
       try {
         const currentUser = await getCurrentUser();
+        console.log('Initial user check:', currentUser?.email || 'No user');
+        
         if (currentUser) {
           setUser(currentUser);
-          await loadUserProfile(currentUser);
+          // Load profile immediately without blocking
+          loadUserProfile(currentUser);
         }
       } catch (error) {
         console.error('Error checking user session:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     checkUserSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      const currentUser = session?.user;
-      setUser(currentUser);
-      if (currentUser) {
-        await loadUserProfile(currentUser);
-      } else {
+      console.log('Auth state changed:', event, session?.user?.email || 'No user');
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        // Load profile immediately
+        loadUserProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
         setUserProfile(null);
-        setProfileLoaded(true);
       }
-      setLoading(false);
     });
 
     return () => {
@@ -58,18 +58,49 @@ function App() {
 
   const loadUserProfile = async (authUser) => {
     setProfileLoaded(false);
+    
     try {
+      console.log('Loading profile for user:', authUser.id);
+      
+      // Load profile with optimized query (no timeout - let it load properly)
       const profile = await getUserProfile(authUser.id);
-      setUserProfile(profile);
+      
+      if (profile) {
+        console.log('Profile loaded successfully:', profile.first_name);
+        setUserProfile(profile);
+        setProfileLoaded(true);
+      } else {
+        // If no profile exists, create a minimal one but still mark as loaded
+        console.log('No profile found, creating minimal fallback');
+        const fallbackProfile = {
+          auth_user_id: authUser.id,
+          email: authUser.email,
+          first_name: authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User',
+          last_name: authUser.user_metadata?.last_name || '',
+          family_roles: [],
+          children_count: 0,
+          main_concerns: [],
+          dietary_preferences: [],
+          personalized_support: false
+        };
+        setUserProfile(fallbackProfile);
+        setProfileLoaded(true);
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
-      // Fallback profile if loading fails
-      setUserProfile({
+      // Even on error, set a fallback and mark as loaded to avoid infinite loading
+      const fallbackProfile = {
         auth_user_id: authUser.id,
         email: authUser.email,
-        first_name: authUser.user_metadata?.first_name || 'User',
-      });
-    } finally {
+        first_name: authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User',
+        last_name: authUser.user_metadata?.last_name || '',
+        family_roles: [],
+        children_count: 0,
+        main_concerns: [],
+        dietary_preferences: [],
+        personalized_support: false
+      };
+      setUserProfile(fallbackProfile);
       setProfileLoaded(true);
     }
   };
@@ -78,17 +109,7 @@ function App() {
     setUser(authUser);
     setUserProfile(profileData);
     setProfileLoaded(true);
-    setLoading(false);
   };
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <img src="/momi-icon-2.png" alt="MOMi Loading" className="loading-icon" />
-        <p>Loading MOMi...</p>
-      </div>
-    );
-  }
 
   return (
     <Router>
@@ -163,9 +184,30 @@ function App() {
               user && profileLoaded ? (
                 <ChatPage user={user} userProfile={userProfile} />
               ) : user && !profileLoaded ? (
-                <div className="loading-container">
-                  <img src="/momi-icon-2.png" alt="MOMi Loading" className="loading-icon" />
-                  <p>Loading Profile...</p>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '100vh',
+                  background: '#f8fafc'
+                }}>
+                  <div style={{ 
+                    textAlign: 'center',
+                    animation: 'fadeIn 0.3s ease-in'
+                  }}>
+                    <div style={{ 
+                      fontSize: '32px', 
+                      marginBottom: '12px',
+                      animation: 'pulse 1s infinite'
+                    }}>🤖</div>
+                    <div style={{ 
+                      color: '#64748b', 
+                      fontSize: '16px',
+                      fontWeight: '500'
+                    }}>
+                      Personalizing your experience...
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <Navigate to="/login" replace />

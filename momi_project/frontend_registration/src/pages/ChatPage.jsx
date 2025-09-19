@@ -12,7 +12,6 @@ const ChatPage = ({ user, userProfile }) => {
   const [conversationId, setConversationId] = useState(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [conversations, setConversations] = useState([])
-  const [loadingConversations, setLoadingConversations] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
@@ -53,11 +52,16 @@ const ChatPage = ({ user, userProfile }) => {
 
   // Memoize user display name for performance
   const userName = useMemo(() => {
-    return userProfile?.first_name ||
-           user?.user_metadata?.first_name ||
-           user?.email?.split('@')[0] ||
-           'there'
+    if (userProfile?.first_name) return userProfile.first_name;
+    if (user?.user_metadata?.first_name) return user.user_metadata.first_name;
+    if (user?.email) return user.email.split('@')[0];
+    return 'there';
   }, [userProfile?.first_name, user?.user_metadata?.first_name, user?.email])
+
+  // Don't show loading if we have user data
+  const isReady = useMemo(() => {
+    return !!(user && userName);
+  }, [user, userName]);
 
   // Memoize conversation list rendering
   const sortedConversations = useMemo(() => {
@@ -67,8 +71,11 @@ const ChatPage = ({ user, userProfile }) => {
   }, [conversations])
 
   useEffect(() => {
-    initializeChat()
-  }, [])
+    if (isReady) {
+      console.log('ChatPage ready, initializing chat for:', userName);
+      initializeChat();
+    }
+  }, [isReady, initializeChat])
 
   useEffect(() => {
     scrollToBottom()
@@ -140,7 +147,7 @@ const ChatPage = ({ user, userProfile }) => {
     if (!user?.id) return
     
     try {
-      setLoadingConversations(true)
+      // No loading state - fetch in background for better UX
       const token = (await supabase.auth.getSession()).data.session?.access_token
       
       if (!token) {
@@ -158,13 +165,12 @@ const ChatPage = ({ user, userProfile }) => {
       )
       
       setConversations(sortedConversations)
+      console.log(`Loaded ${sortedConversations.length} conversations for ${userName}`)
     } catch (error) {
       console.error('Error fetching conversations:', error)
       if (error.response?.status === 401) {
         toast.error('Session expired. Please log in again.')
       }
-    } finally {
-      setLoadingConversations(false)
     }
   }
 
@@ -215,7 +221,7 @@ const ChatPage = ({ user, userProfile }) => {
           formData.append('conversationId', conversationId || '')
           formData.append('userId', user.id) // Add user ID for better tracking
 
-          const uploadResponse = await axios.post('/api/chat/upload-image', formData, {
+          const uploadResponse = await axios.post('/api/chat/upload', formData, {
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'multipart/form-data'
@@ -673,6 +679,8 @@ const ChatPage = ({ user, userProfile }) => {
     }
   }
 
+  // ChatPage should always render if we reach here (user exists)
+
   return (
     <div className="chat-page-fullscreen">
       {/* Compact Header */}
@@ -855,9 +863,7 @@ const ChatPage = ({ user, userProfile }) => {
             </div>
 
             <div className="conversations-list">
-              {loadingConversations && <p>Loading conversations...</p>}
-              
-              {!loadingConversations && conversations.length === 0 && (
+              {conversations.length === 0 && (
                 <p className="no-conversations">No previous conversations found. Start chatting to create your first conversation!</p>
               )}
               

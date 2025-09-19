@@ -8,7 +8,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    storage: window.localStorage, // Explicit localStorage usage
+    storageKey: 'momi-auth-token', // Custom storage key
   }
 })
 
