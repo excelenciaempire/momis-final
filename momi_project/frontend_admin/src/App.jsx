@@ -50,33 +50,72 @@ function App() {
 
   // PrivateRoute component to protect dashboard routes
   const PrivateRoute = ({ children }) => {
-    return session ? children : <Navigate to="/login" />;
+    return session ? children : <Navigate to="/" />;
   };
 
   return (
     <Router basename="/admin">
       <div className="admin-app-container">
-        {session ? (
-          <div className="admin-layout">
-            <Sidebar user={session} onLogout={handleLogout} />
-            <main className="admin-main-content">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/users" element={<RegisteredUsers />} />
-                <Route path="/conversations" element={<Conversations />} />
-                <Route path="/documents" element={<ManageDocuments />} />
-                <Route path="/kb-settings" element={<KBSettings />} />
-                <Route path="/system-prompt" element={<SystemPrompt />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </main>
-          </div>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        )}
+        <Routes>
+          {session ? (
+            <>
+              <Route path="/" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <Dashboard />
+                  </main>
+                </div>
+              } />
+              <Route path="/users" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <RegisteredUsers />
+                  </main>
+                </div>
+              } />
+              <Route path="/conversations" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <Conversations />
+                  </main>
+                </div>
+              } />
+              <Route path="/documents" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <ManageDocuments />
+                  </main>
+                </div>
+              } />
+              <Route path="/kb-settings" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <KBSettings />
+                  </main>
+                </div>
+              } />
+              <Route path="/system-prompt" element={
+                <div className="admin-layout">
+                  <Sidebar user={session} onLogout={handleLogout} />
+                  <main className="admin-main-content">
+                    <SystemPrompt />
+                  </main>
+                </div>
+              } />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          )}
+        </Routes>
       </div>
     </Router>
   );

@@ -120,22 +120,21 @@ app.get(['/register', '/login', '/chat', '/terms', '/email-confirmation'], (req,
 
 // Admin routes - serve admin panel for /admin/* paths ONLY
 app.get('/admin', (req, res) => {
-    res.redirect('/admin/login');
+    console.log('Serving admin index.html for /admin');
+    res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
 app.get( /^\/admin\/.*/ , (req, res) => { 
+    console.log('Serving admin index.html for admin route:', req.path);
     res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
 // Static file serving (AFTER specific routes)
-// Serve Registration Frontend static assets (for root and other paths)
-app.use('/', express.static(registrationDistPath, { index: false })); // Don't serve index.html automatically
-
-// Serve Admin Panel static assets ONLY under /admin path
-app.use('/admin', express.static(adminDistPath));
-
 // Serve Chat Widget static assets
 app.use('/widget', express.static(widgetDistPath));
+
+// Serve Registration Frontend static assets (for root and other paths) - LAST
+app.use('/', express.static(registrationDistPath, { index: false })); // Don't serve index.html automatically
 
 // Initialize Supabase client
 // It's recommended to use the SERVICE_ROLE_KEY for backend operations 
@@ -1551,6 +1550,9 @@ adminRouter.post('/dashboard/stats', async (req, res) => {
 
 // Mount the admin router under /api/admin (protected routes)
 app.use('/api/admin', adminRouter); // Re-enabled admin API routes
+
+// Serve Admin Panel static assets ONLY under /admin path (AFTER API routes)
+app.use('/admin', express.static(adminDistPath));
 
 // --- Image Upload Route (Protected) ---
 app.post('/api/chat/upload', authUser, imageUpload.single('image'), async (req, res) => {
