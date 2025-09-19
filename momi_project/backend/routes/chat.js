@@ -597,7 +597,7 @@ router.post('/speech-to-text', authUser, upload.single('audio'), async (req, res
             const transcription = await openai.audio.transcriptions.create({
                 file: fs.createReadStream(tempFilePath),
                 model: 'whisper-1',
-                language: 'es', // Spanish
+                language: 'en', // English
                 response_format: 'json'
             });
 
