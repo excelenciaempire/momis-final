@@ -13,6 +13,8 @@ const ChatPage = ({ user, userProfile }) => {
     return <div>No user found</div>;
   }
   
+  try {
+  
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const navigate = useNavigate()
@@ -915,6 +917,18 @@ const ChatPage = ({ user, userProfile }) => {
       </div>
     </div>
   )
+  
+  } catch (error) {
+    console.error('ChatPage render error:', error);
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>Chat Loading Error</h2>
+        <p>There was an error loading the chat interface.</p>
+        <p>Error: {error.message}</p>
+        <button onClick={() => window.location.reload()}>Reload Page</button>
+      </div>
+    );
+  }
 }
 
 export default ChatPage
