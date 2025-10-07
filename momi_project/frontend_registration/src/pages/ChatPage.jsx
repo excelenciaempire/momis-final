@@ -37,8 +37,9 @@ const ChatPage = ({ user, userProfile }) => {
   }, [messages])
 
   // Save conversation state to localStorage whenever it changes
+  // BUT only save if we have an actual conversation (not just welcome message)
   useEffect(() => {
-    if (conversationId && messages.length > 0) {
+    if (conversationId && messages.length > 1) { // More than just welcome message
       localStorage.setItem('currentConversationId', conversationId);
       localStorage.setItem('currentMessages', JSON.stringify(messages));
     }
@@ -76,50 +77,63 @@ const ChatPage = ({ user, userProfile }) => {
         return;
       }
 
-      // Check if there's a saved conversation in localStorage
-      const savedConversationId = localStorage.getItem('currentConversationId');
-      const savedMessages = localStorage.getItem('currentMessages');
+      // CHANGE: Start with NEW chat by default instead of loading saved conversation
+      // This fixes the issue where users always continue their last conversation
+      console.log('Starting fresh chat session for user:', userProfile?.first_name);
       
-      if (savedConversationId && savedMessages) {
-        try {
-          const parsedMessages = JSON.parse(savedMessages);
-          console.log('Restoring saved conversation:', savedConversationId);
-          setConversationId(savedConversationId);
-          setMessages(parsedMessages);
-          return;
-        } catch (error) {
-          console.warn('Failed to restore saved conversation:', error);
-          // Clear corrupted data
-          localStorage.removeItem('currentConversationId');
-          localStorage.removeItem('currentMessages');
+      // Clear any saved conversation from previous session
+      localStorage.removeItem('currentConversationId');
+      localStorage.removeItem('currentMessages');
+      
+      // Get personalized welcome message from backend
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        
+        if (token) {
+          const response = await axios.get('/api/chat/welcome', {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
+          });
+          
+          if (response.data?.message) {
+            const welcomeMessage = {
+              id: Date.now(),
+              sender_type: 'momi',
+              content: response.data.message,
+              timestamp: new Date().toISOString()
+            };
+            setMessages([welcomeMessage]);
+            return;
+          }
         }
+      } catch (apiError) {
+        console.warn('Could not get personalized welcome, using fallback:', apiError.message);
       }
       
-      // Get welcome message with safe fallbacks
+      // Fallback welcome message
       const userName = userProfile?.first_name || 
                       user?.user_metadata?.first_name || 
                       (user?.email ? user.email.split('@')[0] : null) || 
-                      'there'
-      
-      console.log('Initializing new chat for user:', userName);
+                      'there';
       
       const welcomeMessage = {
         id: Date.now(),
         sender_type: 'momi',
         content: `Hi ${userName}! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
         timestamp: new Date().toISOString()
-      }
-      setMessages([welcomeMessage])
+      };
+      setMessages([welcomeMessage]);
+      
     } catch (error) {
-      console.error('Error initializing chat:', error)
-      // Fallback welcome message
+      console.error('Error initializing chat:', error);
+      // Ultimate fallback
       const welcomeMessage = {
         id: Date.now(),
         sender_type: 'momi',
         content: `Hi there! 😊 I'm MOMi, your personalized wellness assistant. I'm here to support you with advice based on the 7 Pillars of Wellness. How can I help you today?`,
         timestamp: new Date().toISOString()
-      }
-      setMessages([welcomeMessage])
+      };
+      setMessages([welcomeMessage]);
     }
   }
 

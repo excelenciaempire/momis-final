@@ -130,14 +130,25 @@ const RegistrationForm = ({ onSuccess }) => {
         return
       }
 
-      // Sign up user with Supabase Auth
+      // Sign up user with Supabase Auth - Include ALL registration data in metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           data: {
             first_name: data.firstName,
-            last_name: data.lastName
+            last_name: data.lastName,
+            family_roles: data.familyRoles, // Array
+            children_count: parseInt(data.childrenCount) || 0,
+            children_ages: data.childrenAges, // Array
+            main_concerns: data.mainConcerns, // Array
+            main_concerns_other: data.mainConcernsOther || null,
+            dietary_preferences: data.dietaryPreferences, // Array
+            dietary_preferences_other: data.dietaryPreferencesOther || null,
+            personalized_support: data.personalizedSupport === 'yes' || data.personalizedSupport === true,
+            registration_date: new Date().toISOString(),
+            registration_source: 'web_form',
+            form_version: '1.0'
           }
         }
       })

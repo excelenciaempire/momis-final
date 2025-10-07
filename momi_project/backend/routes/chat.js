@@ -5,6 +5,8 @@ const { OpenAI } = require('openai');
 const authUser = require('../middleware/authUser');
 const conversationState = require('../utils/conversationState');
 const { startQuiz, answerQuiz, getQuizStatus } = require('../controllers/quiz');
+const { buildSystemPrompt, getPersonalizedWelcomeMessage } = require('../utils/buildSystemPrompt');
+const { extractAndSavePreferences } = require('../utils/updateChatbotMemory');
 
 const router = express.Router();
 
@@ -60,119 +62,8 @@ async function getEmbedding(text) {
     }
 }
 
-// Helper function to get MOMi base prompt with user context
-async function getMomiBasePromptWithUserContext(userProfile) {
-    // Get base prompt
-    const { data, error } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'momi_base_prompt')
-        .single();
-
-    let basePrompt = 'You are MOMi, a helpful AI wellness assistant. Your goal is to support users, provide helpful information, and guide them towards well-being resources. Do not offer medical advice.';
-
-    if (data && !error) {
-        basePrompt = data.setting_value;
-    }
-
-    // Add user context to the prompt
-    const userContext = buildUserContextPrompt(userProfile);
-
-    return `${basePrompt}
-
-${userContext}
-
-Remember to be empathetic, supportive, and personalized in your responses based on the user's profile and preferences.`;
-}
-
-// Helper function to build user context prompt
-function buildUserContextPrompt(userProfile) {
-    let context = "\n--- USER PROFILE CONTEXT ---\n";
-
-    context += `User: ${userProfile.first_name} ${userProfile.last_name}\n`;
-
-    if (userProfile.family_roles && userProfile.family_roles.length > 0) {
-        const roles = userProfile.family_roles.map(role => {
-            switch(role) {
-                case 'hoping_to_become_mother': return 'hoping to become a mother';
-                case 'currently_pregnant': return 'currently pregnant';
-                case 'mom_young_children': return 'mom of young children (0-5)';
-                case 'mom_school_age': return 'mom of school-age children (6-12)';
-                case 'mom_teens': return 'mom of teens (13-18)';
-                case 'wise_woman': return 'wise woman helping raise children';
-                default: return role;
-            }
-        });
-        context += `Family Role: ${roles.join(', ')}\n`;
-    }
-
-    if (userProfile.children_count > 0) {
-        context += `Number of Children: ${userProfile.children_count}\n`;
-
-        if (userProfile.children_ages && userProfile.children_ages.length > 0) {
-            const ages = userProfile.children_ages.map(age => {
-                switch(age) {
-                    case '0-2': return '0-2 (Infant/Toddler)';
-                    case '3-5': return '3-5 (Preschool)';
-                    case '6-12': return '6-12 (School-age)';
-                    case '13-18': return '13-18 (Teen)';
-                    case '18+': return '18+ (Young Adult)';
-                    case 'expecting': return 'expecting a child';
-                    default: return age;
-                }
-            });
-            context += `Children Ages: ${ages.join(', ')}\n`;
-        }
-    }
-
-    if (userProfile.main_concerns && userProfile.main_concerns.length > 0) {
-        const concerns = userProfile.main_concerns.map(concern => {
-            switch(concern) {
-                case 'food': return 'Food: Nourishment and healing';
-                case 'resilience': return 'Resilience: Stress, sleep, nervous system support';
-                case 'movement': return 'Movement: Physical activity and energy';
-                case 'community': return 'Community: Relationships and support';
-                case 'spiritual': return 'Spiritual: Purpose and emotional healing';
-                case 'environment': return 'Environment: Detoxifying home';
-                case 'abundance': return 'Abundance: Financial health and resources';
-                default: return concern;
-            }
-        });
-        context += `Main Wellness Goals: ${concerns.join(', ')}\n`;
-
-        if (userProfile.main_concerns_other) {
-            context += `Additional Concern: ${userProfile.main_concerns_other}\n`;
-        }
-    }
-
-    if (userProfile.dietary_preferences && userProfile.dietary_preferences.length > 0) {
-        const dietary = userProfile.dietary_preferences.map(pref => {
-            switch(pref) {
-                case 'gluten_free': return 'gluten-free';
-                case 'dairy_free': return 'dairy-free';
-                case 'nut_free': return 'nut-free';
-                case 'soy_free': return 'soy-free';
-                case 'vegetarian': return 'vegetarian';
-                case 'vegan': return 'vegan';
-                case 'no_preference': return 'no specific dietary preferences';
-                default: return pref;
-            }
-        });
-        context += `Dietary Preferences: ${dietary.join(', ')}\n`;
-
-        if (userProfile.dietary_preferences_other) {
-            context += `Additional Dietary Info: ${userProfile.dietary_preferences_other}\n`;
-        }
-    }
-
-    if (userProfile.personalized_support) {
-        context += `Preferences: Open to personalized recommendations and tailored content\n`;
-    }
-
-    context += "--- END USER PROFILE ---\n\n";
-
-    return context;
-}
+// Note: User context building functions have been moved to utils/buildUserContext.js
+// and utils/buildSystemPrompt.js for better organization and reusability
 
 // Chat message route - now requires authentication
 router.post('/message', authUser, async (req, res) => {
@@ -300,37 +191,44 @@ router.post('/message', authUser, async (req, res) => {
             }
         }
 
-        // 4. Prepare context for OpenAI
+        // 4. Prepare context for OpenAI - Load conversation history
         const { data: recentMessages, error: historyError } = await supabase
             .from('messages')
             .select('sender_type, content, content_type, metadata')
             .eq('conversation_id', currentConversationId)
-            .order('timestamp', { ascending: true })
-            .limit(10);
+            .order('timestamp', { ascending: false })
+            .limit(30); // Get last 30 messages for maximum context retention
         if (historyError) throw historyError;
 
-        // Get personalized system prompt
-        const systemPrompt = await getMomiBasePromptWithUserContext(userProfile);
+        // Reverse to get chronological order (oldest first)
+        const chronologicalMessages = (recentMessages || []).reverse();
 
-        // Add RAG context if available
-        let finalSystemPrompt = systemPrompt;
-        if (ragContext) {
-            finalSystemPrompt = `${systemPrompt}\n\nRelevant information from knowledge base:\n${ragContext}\n\nUse this information to provide accurate and helpful responses when relevant.`;
-        }
-
-        // Map historical messages to OpenAI format
-        const historicalOpenAIMessages = recentMessages.map(msg => {
-            let content;
-            if (msg.content_type === 'image_url') {
-                content = `[User sent an image: ${msg.metadata?.original_user_prompt || 'User uploaded an image.'}]`;
-            } else {
-                content = msg.content;
-            }
-            return {
-                role: msg.sender_type === 'momi' ? 'assistant' : 'user',
-                content: content
-            };
+        // 5. Build personalized system prompt with RAG context
+        const finalSystemPrompt = await buildSystemPrompt(userProfile, supabase, ragContext);
+        
+        console.log(`📝 Building context for ${userProfile.first_name}:`, {
+            conversationId: currentConversationId,
+            historyCount: chronologicalMessages.length,
+            hasRAG: !!ragContext,
+            dietaryPrefs: userProfile.dietary_preferences?.length || 0,
+            mainConcerns: userProfile.main_concerns?.length || 0
         });
+
+        // Map historical messages to OpenAI format (use chronological order)
+        const historicalOpenAIMessages = chronologicalMessages
+            .filter(msg => msg.content && msg.content.trim()) // Filter empty messages
+            .map(msg => {
+                let content;
+                if (msg.content_type === 'image_url') {
+                    content = `[User sent an image: ${msg.metadata?.original_user_prompt || 'User uploaded an image.'}]`;
+                } else {
+                    content = msg.content;
+                }
+                return {
+                    role: msg.sender_type === 'momi' ? 'assistant' : 'user',
+                    content: content
+                };
+            });
 
         // Build final messages array
         const openAIMessages = [
@@ -364,11 +262,12 @@ router.post('/message', authUser, async (req, res) => {
             openAIMessages.push({ role: "user", content: message });
         }
 
-        // 5. Call OpenAI API
+        // 5. Call OpenAI API - Use GPT-4o for better context retention
         const completion = await openai.chat.completions.create({
-            model: imageUrl ? "gpt-4o" : "gpt-3.5-turbo",
+            model: "gpt-4o", // Using gpt-4o for all messages for better context and continuity
             messages: openAIMessages,
-            max_tokens: imageUrl ? 1024 : (ragContext ? 1200 : 1024)
+            max_tokens: imageUrl ? 1024 : (ragContext ? 1200 : 1024),
+            temperature: 0.7 // Balanced creativity and consistency
         });
 
         const momiResponseText = completion.choices[0].message.content;
@@ -384,22 +283,10 @@ router.post('/message', authUser, async (req, res) => {
         const { error: momiMessageError } = await supabase.from('messages').insert([momiMessagePayload]);
         if (momiMessageError) throw momiMessageError;
 
-        // 7. Update user's chatbot memory if needed
-        if (userProfile.chatbot_memory) {
-            // Update conversation topics, preferences, etc.
-            const updatedMemory = {
-                ...userProfile.chatbot_memory,
-                last_conversation_at: new Date().toISOString(),
-                recent_topics: [
-                    ...(userProfile.chatbot_memory.recent_topics || []).slice(-4),
-                    message ? message.substring(0, 100) : 'image_shared'
-                ]
-            };
-
-            await supabase
-                .from('user_profiles')
-                .update({ chatbot_memory: updatedMemory })
-                .eq('auth_user_id', user.id);
+        // 7. Extract and save new preferences mentioned in the conversation (async, non-blocking)
+        if (message && message.trim()) {
+            extractAndSavePreferences(user.id, message, momiResponseText, supabase)
+                .catch(err => console.error('Memory extraction failed (non-critical):', err.message));
         }
 
         res.json({
@@ -413,6 +300,25 @@ router.post('/message', authUser, async (req, res) => {
         res.status(500).json({
             error: 'Failed to process chat message',
             details: error.message
+        });
+    }
+});
+
+// Get personalized welcome message
+router.get('/welcome', authUser, async (req, res) => {
+    try {
+        const userProfile = req.userProfile;
+        const welcomeMessage = getPersonalizedWelcomeMessage(userProfile);
+        
+        res.json({
+            message: welcomeMessage,
+            userName: userProfile?.first_name || 'there'
+        });
+    } catch (error) {
+        console.error('Error getting welcome message:', error);
+        res.json({
+            message: "Hi there! 😊 I'm MOMi, your wellness assistant. How can I help you today?",
+            userName: 'there'
         });
     }
 });
