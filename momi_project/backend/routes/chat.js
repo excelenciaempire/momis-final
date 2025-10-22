@@ -308,7 +308,7 @@ router.post('/message', authUser, async (req, res) => {
 router.get('/welcome', authUser, async (req, res) => {
     try {
         const userProfile = req.userProfile;
-        const welcomeMessage = getPersonalizedWelcomeMessage(userProfile);
+        const welcomeMessage = await getPersonalizedWelcomeMessage(userProfile, supabase);
         
         res.json({
             message: welcomeMessage,

@@ -1167,10 +1167,18 @@ adminRouter.get('/guests/:guestUserId/conversations', async (req, res) => {
 // Get all conversations (admin version)
 adminRouter.get('/conversations', async (req, res) => {
     try {
-        // Get conversations with user information
+        // Get conversations with user information from user_profiles
         const { data: conversations, error } = await supabase
             .from('conversations')
-            .select('*')
+            .select(`
+                *,
+                user_profiles:user_id (
+                    id,
+                    first_name,
+                    last_name,
+                    email
+                )
+            `)
             .not('user_id', 'is', null)
             .order('created_at', { ascending: false });
 
@@ -1195,6 +1203,15 @@ adminRouter.get('/conversations', async (req, res) => {
 
                 const lastMsg = lastMessage && lastMessage.length > 0 ? lastMessage[0] : null;
                 
+                // Extract user information from the joined user_profiles
+                const userProfile = conv.user_profiles;
+                const firstName = userProfile?.first_name || '';
+                const lastName = userProfile?.last_name || '';
+                const email = userProfile?.email || 'No email';
+                
+                // Build full name
+                const fullName = `${firstName} ${lastName}`.trim() || `User ${conv.user_id?.substring(0, 8) || 'Unknown'}`;
+                
                 return {
                     ...conv,
                     message_count: count || 0,
@@ -1202,8 +1219,10 @@ adminRouter.get('/conversations', async (req, res) => {
                         (lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content) : 
                         'No messages yet',
                     last_message_at: lastMsg ? lastMsg.timestamp : conv.created_at,
-                    user_email: 'user@example.com',
-                    user_name: `User ${conv.user_id.substring(0, 8)}`
+                    user_email: email,
+                    user_name: fullName,
+                    user_first_name: firstName,
+                    user_last_name: lastName
                 };
             })
         );

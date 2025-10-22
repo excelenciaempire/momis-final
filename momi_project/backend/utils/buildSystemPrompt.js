@@ -103,63 +103,48 @@ Always maintain conversation context and remember what the user tells you.`;
 }
 
 /**
- * Obtiene el mensaje de bienvenida personalizado
+ * Obtiene el mensaje de bienvenida personalizado desde la configuración del sistema
  * @param {Object} userProfile - Perfil del usuario
- * @returns {string} Mensaje de bienvenida personalizado
+ * @param {Object} supabase - Cliente de Supabase
+ * @returns {Promise<string>} Mensaje de bienvenida personalizado
  */
-function getPersonalizedWelcomeMessage(userProfile) {
-    if (!userProfile) {
-        return "Hi there! 😊 I'm MOMi, your wellness assistant. How can I help you today?";
+async function getPersonalizedWelcomeMessage(userProfile, supabase) {
+    try {
+        // Obtener el mensaje de bienvenida configurado en el sistema
+        const { data, error } = await supabase
+            .from('system_settings')
+            .select('setting_value')
+            .eq('setting_key', 'opening_message')
+            .single();
+
+        let welcomeMessage = '';
+        
+        if (data && !error && data.setting_value) {
+            // Usar el mensaje configurado en el sistema
+            welcomeMessage = data.setting_value;
+        } else {
+            // Fallback message si no hay configuración
+            console.warn('Opening message not found in system_settings, using fallback');
+            welcomeMessage = "Hi, I'm MOMi 👋\nYour AI health coach, here to help you build the 7 Pillars of Wellness for you and your family. 🏠\nWhat do you need help with today?";
+        }
+
+        // Personalizar el mensaje con el nombre del usuario si está disponible
+        // Reemplazar variables comunes en el mensaje
+        if (userProfile && userProfile.first_name) {
+            // Si el mensaje tiene {name} o similar, reemplazarlo
+            welcomeMessage = welcomeMessage.replace(/\{name\}/gi, userProfile.first_name);
+            welcomeMessage = welcomeMessage.replace(/\{first_name\}/gi, userProfile.first_name);
+        }
+
+        return welcomeMessage;
+    } catch (error) {
+        console.error('Error getting welcome message:', error);
+        // Fallback ultra seguro
+        const name = userProfile?.first_name || 'there';
+        return `Hi ${name}! 😊 I'm MOMi, your wellness assistant. How can I help you today?`;
     }
-
-    const name = userProfile.first_name || 'there';
-    const timeOfDay = getTimeOfDay();
-    
-    // Diferentes saludos basados en el perfil
-    const greetings = [];
-
-    // Greeting base con nombre
-    greetings.push(`Good ${timeOfDay}, ${name}! 😊`);
-
-    // Personalización basada en roles
-    if (userProfile.family_roles && userProfile.family_roles.includes('currently_pregnant')) {
-        greetings.push("How are you and baby doing today?");
-    } else if (userProfile.family_roles && userProfile.family_roles.includes('mom_young_children')) {
-        greetings.push("I hope you and your little ones are having a great day!");
-    } else if (userProfile.family_roles && userProfile.family_roles.includes('mom_teens')) {
-        greetings.push("How's everything going with your teens?");
-    } else {
-        greetings.push("How are you doing today?");
-    }
-
-    // Agregar referencia a sus preocupaciones principales si es primera conversación
-    if (userProfile.main_concerns && userProfile.main_concerns.length > 0) {
-        const concerns = userProfile.main_concerns.slice(0, 2).join(' and ');
-        greetings.push(`I'm here to support you with ${concerns} and more.`);
-    } else {
-        greetings.push("I'm here to support you with wellness, nutrition, family life, and more.");
-    }
-
-    greetings.push("What can I help you with today? 💛");
-
-    return greetings.join(' ');
 }
 
-/**
- * Determina la hora del día para saludos
- * @returns {string} 'morning', 'afternoon', o 'evening'
- */
-function getTimeOfDay() {
-    const hour = new Date().getHours();
-    
-    if (hour >= 5 && hour < 12) {
-        return 'morning';
-    } else if (hour >= 12 && hour < 17) {
-        return 'afternoon';
-    } else {
-        return 'evening';
-    }
-}
 
 module.exports = {
     buildSystemPrompt,

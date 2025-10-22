@@ -276,7 +276,7 @@ const ChatPage = ({ user, userProfile }) => {
     }
   }
 
-  const startNewConversation = () => {
+  const startNewConversation = async () => {
     // Clear current conversation state
     setMessages([])
     setConversationId(null)
@@ -286,7 +286,32 @@ const ChatPage = ({ user, userProfile }) => {
     localStorage.removeItem('currentConversationId');
     localStorage.removeItem('currentMessages');
     
-    // Force initialize new chat with welcome message
+    // Get welcome message from backend (uses system configuration)
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      
+      if (token) {
+        const response = await axios.get('/api/chat/welcome', {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        });
+        
+        if (response.data?.message) {
+          const welcomeMessage = {
+            id: Date.now(),
+            sender_type: 'momi',
+            content: response.data.message,
+            timestamp: new Date().toISOString()
+          };
+          setMessages([welcomeMessage]);
+          return;
+        }
+      }
+    } catch (apiError) {
+      console.warn('Could not get welcome message from backend:', apiError.message);
+    }
+    
+    // Fallback welcome message if backend call fails
     const userName = userProfile?.first_name || 
                     user?.user_metadata?.first_name || 
                     (user?.email ? user.email.split('@')[0] : null) || 
