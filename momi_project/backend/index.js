@@ -1170,23 +1170,29 @@ adminRouter.get('/conversations', async (req, res) => {
         // Get conversations with user information from user_profiles
         const { data: conversations, error } = await supabase
             .from('conversations')
-            .select(`
-                *,
-                user_profiles:user_id (
-                    id,
-                    first_name,
-                    last_name,
-                    email
-                )
-            `)
+            .select('*')
             .not('user_id', 'is', null)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching conversations:', error);
+            throw error;
+        }
 
         // Enhance conversations with message counts and last message
         const enhancedConversations = await Promise.all(
             conversations.map(async (conv) => {
+                // Get user profile information
+                const { data: userProfile, error: userError } = await supabase
+                    .from('user_profiles')
+                    .select('first_name, last_name, email')
+                    .eq('id', conv.user_id)
+                    .single();
+                
+                if (userError) {
+                    console.warn(`Could not fetch user profile for ${conv.user_id}:`, userError.message);
+                }
+
                 // Get message count
                 const { count, error: countError } = await supabase
                     .from('messages')
@@ -1203,8 +1209,7 @@ adminRouter.get('/conversations', async (req, res) => {
 
                 const lastMsg = lastMessage && lastMessage.length > 0 ? lastMessage[0] : null;
                 
-                // Extract user information from the joined user_profiles
-                const userProfile = conv.user_profiles;
+                // Extract user information
                 const firstName = userProfile?.first_name || '';
                 const lastName = userProfile?.last_name || '';
                 const email = userProfile?.email || 'No email';
