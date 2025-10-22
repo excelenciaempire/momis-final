@@ -1183,10 +1183,11 @@ adminRouter.get('/conversations', async (req, res) => {
         const enhancedConversations = await Promise.all(
             conversations.map(async (conv) => {
                 // Get user profile information
+                // Note: conversations.user_id contains auth_user_id, not user_profiles.id
                 const { data: userProfile, error: userError } = await supabase
                     .from('user_profiles')
                     .select('first_name, last_name, email')
-                    .eq('id', conv.user_id)
+                    .eq('auth_user_id', conv.user_id)
                     .single();
                 
                 if (userError) {
@@ -1210,12 +1211,19 @@ adminRouter.get('/conversations', async (req, res) => {
                 const lastMsg = lastMessage && lastMessage.length > 0 ? lastMessage[0] : null;
                 
                 // Extract user information
-                const firstName = userProfile?.first_name || '';
-                const lastName = userProfile?.last_name || '';
+                const firstName = userProfile?.first_name?.trim() || '';
+                const lastName = userProfile?.last_name?.trim() || '';
                 const email = userProfile?.email || 'No email';
                 
-                // Build full name
-                const fullName = `${firstName} ${lastName}`.trim() || `User ${conv.user_id?.substring(0, 8) || 'Unknown'}`;
+                // Build full name - use email username if names are empty
+                let fullName = `${firstName} ${lastName}`.trim();
+                if (!fullName && email && email !== 'No email') {
+                    // Use email username as fallback
+                    fullName = email.split('@')[0];
+                } else if (!fullName) {
+                    // Last resort: use user_id
+                    fullName = `User ${conv.user_id?.substring(0, 8) || 'Unknown'}`;
+                }
                 
                 return {
                     ...conv,
